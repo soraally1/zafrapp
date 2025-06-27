@@ -50,13 +50,13 @@ export default function RegisterPage() {
         <div className="flex-1 flex flex-col justify-center p-6 sm:p-10 md:p-12 gap-6">
           <div className="flex flex-col items-start gap-3 mb-4">
             <Image src="/zafra.svg" alt="ZAFRA Logo" width={70} height={35} className="mb-2" />
-            <h2 className="text-3xl sm:text-4xl font-extrabold text-[#00C570] dark:text-white leading-tight">Register ZAFRA</h2>
-            <p className="text-gray-500 dark:text-gray-300 text-base sm:text-lg font-medium">Buat akun baru untuk mengelola keuangan syariah Anda</p>
+            <h2 className="text-3xl sm:text-4xl font-extrabold text-[#00C570] leading-tight">Register ZAFRA</h2>
+            <p className="text-gray-500 text-base sm:text-lg font-medium">Buat akun baru untuk mengelola keuangan syariah Anda</p>
           </div>
           <div className="border-b border-gray-200 dark:border-gray-700 my-2 w-full" />
           <form onSubmit={handleSubmit} className="flex flex-col gap-4 w-full">
             <label className="flex flex-col gap-1 text-left w-full">
-              <span className="font-semibold text-gray-700 dark:text-gray-200">Nama</span>
+              <span className="font-semibold text-gray-700 ">Nama</span>
               <input
                 type="text"
                 placeholder="Nama"
@@ -68,7 +68,7 @@ export default function RegisterPage() {
               />
             </label>
             <label className="flex flex-col gap-1 text-left w-full">
-              <span className="font-semibold text-gray-700 dark:text-gray-200">Email</span>
+              <span className="font-semibold text-gray-700 ">Email</span>
               <div className="relative">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
                   {/* Email Icon */}
@@ -88,7 +88,7 @@ export default function RegisterPage() {
               </div>
             </label>
             <label className="flex flex-col gap-1 text-left w-full">
-              <span className="font-semibold text-gray-700 dark:text-gray-200">Password</span>
+              <span className="font-semibold text-gray-700">Password</span>
               <div className="relative">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
                   {/* Password Icon */}
@@ -108,7 +108,7 @@ export default function RegisterPage() {
               </div>
             </label>
             <label className="flex flex-col gap-1 text-left w-full">
-              <span className="font-semibold text-gray-700 dark:text-gray-200">Role</span>
+              <span className="font-semibold text-gray-700">Role</span>
               <select
                 value={role}
                 onChange={e => setRole(e.target.value)}

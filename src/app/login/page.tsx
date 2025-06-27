@@ -2,9 +2,12 @@
 import Link from "next/link";
 import { useState } from "react";
 import Image from "next/image";
-import { loginWithEmail } from "@/lib/firebaseApi";
+import { loginUser } from "@/app/api/service/firebaseUserService";
+import { LuMail, LuLock } from "react-icons/lu";
+import { useRouter } from "next/navigation";
 
 export default function LoginPage() {
+  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -15,9 +18,20 @@ export default function LoginPage() {
     setLoading(true);
     setError("");
     try {
-      await loginWithEmail(email, password);
-      // TODO: Redirect to dashboard or home
-      alert("Login berhasil!");
+      const result = await loginUser({ email, password });
+      if (result.success) {
+        if (result.role === "hr-keuangan") {
+          router.push("/dashboard/hr-keuangan");
+        } else if (result.role === "karyawan") {
+          router.push("/dashboard/karyawan");
+        } else if (result.role === "umkm-amil"){
+          router.push("/dashboard/umkm-amil");
+        } else {
+          setError("Anda tidak memiliki akses ke halaman ini.");
+        }
+      } else {
+        setError(result.error);
+      }
     } catch (err) {
       setError("Email atau password salah, atau akun tidak ditemukan.");
     } finally {
@@ -32,19 +46,17 @@ export default function LoginPage() {
         <div className="flex-1 flex flex-col justify-center p-6 sm:p-10 md:p-12 gap-6 ">
           <div className="flex flex-col items-start gap-3 mb-4">
             <Image src="/zafra.svg" alt="ZAFRA Logo" width={70} height={35} className="mb-2" />
-            <h2 className="text-3xl sm:text-4xl font-extrabold text-[#00C570] dark:text-white leading-tight">Selamat Datang!</h2>
+            <h2 className="text-3xl sm:text-4xl font-extrabold text-[#00C570] leading-tight">Selamat Datang!</h2>
             <p className="text-gray-500 dark:text-gray-300 text-base sm:text-lg font-medium">Masuk ke akun ZAFRA Anda untuk mengelola keuangan syariah modern.</p>
           </div>
           <div className="border-b border-gray-200 dark:border-gray-700 my-2 w-full" />
           <form onSubmit={handleSubmit} className="flex flex-col gap-4 w-full">
             <label className="flex flex-col gap-1 text-left w-full">
-              <span className="font-semibold text-gray-700 dark:text-gray-200">Email</span>
+              <span className="font-semibold text-gray-700 ">Email</span>
               <div className="relative">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
                   {/* Email Icon */}
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25H4.5a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-.659 1.591l-7.09 7.09a2.25 2.25 0 01-3.182 0l-7.09-7.09A2.25 2.25 0 012.25 6.993V6.75" />
-                  </svg>
+                  <LuMail size={20} />
                 </span>
                 <input
                   type="email"
@@ -58,13 +70,10 @@ export default function LoginPage() {
               </div>
             </label>
             <label className="flex flex-col gap-1 text-left w-full">
-              <span className="font-semibold text-gray-700 dark:text-gray-200">Password</span>
+              <span className="font-semibold text-gray-700 ">Password</span>
               <div className="relative">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
-                  {/* Password Icon */}
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V7.125a4.125 4.125 0 10-8.25 0V10.5m12.375 0A2.625 2.625 0 0017.25 21h-10.5a2.625 2.625 0 01-2.625-2.625v-7.875A2.625 2.625 0 016.75 7.875h10.5a2.625 2.625 0 012.625 2.625v7.875z" />
-                  </svg>
+                <LuLock size={20} />
                 </span>
                 <input
                   type="password"
