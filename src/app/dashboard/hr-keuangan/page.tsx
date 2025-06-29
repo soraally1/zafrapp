@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import Sidebar from "../Sidebar";
+import Sidebar from "../../components/Sidebar";
 import { useState } from "react";
 import React from "react";
 import { Doughnut } from 'react-chartjs-2';
