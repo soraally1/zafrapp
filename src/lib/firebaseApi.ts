@@ -3,13 +3,13 @@ import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword } f
 import { getFirestore, doc, setDoc } from "firebase/firestore";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyDyK7iC0qxP5ZHNrIE5J4iCbQX8nRPEC4o",
-  authDomain: "zafrapp-9b0eb.firebaseapp.com",
-  projectId: "zafrapp-9b0eb",
-  storageBucket: "zafrapp-9b0eb.firebasestorage.app",
-  messagingSenderId: "790770531133",
-  appId: "1:790770531133:web:7fa12ab0ed0827fc4fe354",
-  measurementId: "G-8YQV0HYT6W"
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+  measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID
 };
 
 const app = initializeApp(firebaseConfig);
