@@ -1,8 +1,16 @@
 import { registerWithEmail, loginWithEmail, saveUserToFirestore } from "@/lib/firebaseApi";
-import { getFirestore, doc, getDoc } from "firebase/firestore";
+import { getFirestore, doc, getDoc, deleteDoc, updateDoc } from "firebase/firestore";
 import { collection, query, where, getDocs } from "firebase/firestore";
 
 const db = getFirestore();
+
+interface User {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+  photo?: string;
+}
 
 export async function registerUser({ name, email, password, role }: { name: string, email: string, password: string, role: string }) {
   try {
@@ -56,5 +64,56 @@ export async function getUser(email: string) {
   } catch (err: any) {
     console.error("Error getting user:", err);
     return null;
+  }
+}
+
+export async function getAllUsers(): Promise<User[]> {
+  try {
+    const usersRef = collection(db, "users");
+    const querySnapshot = await getDocs(usersRef);
+    
+    const users = querySnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...(doc.data() as Omit<User, 'id'>)
+    }));
+    
+    return users;
+  } catch (err: any) {
+    console.error("Error getting all users:", err);
+    return [];
+  }
+}
+
+export async function deleteUser(uid: string) {
+  try {
+    await deleteDoc(doc(db, "users", uid));
+    return { success: true };
+  } catch (err: any) {
+    console.error("Error deleting user:", err);
+    return { success: false, error: err?.message || "Failed to delete user" };
+  }
+}
+
+export async function updateUserRole(uid: string, newRole: string) {
+  try {
+    await updateDoc(doc(db, "users", uid), { role: newRole });
+    return { success: true };
+  } catch (err: any) {
+    console.error("Error updating user role:", err);
+    return { success: false, error: err?.message || "Failed to update user role" };
+  }
+}
+
+export async function createUser({ name, email, password, role }: { name: string, email: string, password: string, role: string }) {
+  try {
+    // First register the user with Firebase Auth
+    const registerResult = await registerUser({ name, email, password, role });
+    if (!registerResult.success) {
+      throw new Error(registerResult.error || "Failed to register user");
+    }
+    
+    return { success: true, uid: registerResult.uid };
+  } catch (err: any) {
+    return { success: false, error: err?.message || "Failed to create user" };
   }
 }

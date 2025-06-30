@@ -2,7 +2,8 @@
 
 import Image from "next/image";
 import Sidebar from "../../components/Sidebar";
-import { useState } from "react";
+import Topbar from "../../components/Topbar";
+import { useState, useEffect } from "react";
 import React from "react";
 import { Doughnut } from 'react-chartjs-2';
 import {
@@ -12,6 +13,17 @@ import {
   Legend
 } from 'chart.js';
 import ReportCards from "./ReportCards";
+import {
+  getSummary,
+  getStats,
+  getTasks,
+  getUpcoming,
+  getReports
+} from "./hrDashboardService";
+import { getUser } from "@/app/api/service/firebaseUserService";
+import { getAuth, onAuthStateChanged, signOut } from "firebase/auth";
+import { useRouter } from "next/navigation";
+import { IoMdPerson, IoMdLogOut } from "react-icons/io";
 ChartJS.register(ArcElement, Tooltip, Legend);
 
 const menu = [
@@ -25,39 +37,43 @@ const menu = [
 
 export default function HRKeuanganDashboard() {
   // Dummy data
-  const userName = "Bapak/Ibu HR";
-  const summary = [
-    { label: "Gaji Bulan Ini", value: "Rp 120.000.000", color: "bg-[#E6FFF4] text-[#00C570]" },
-    { label: "Zakat Terkumpul", value: "Rp 8.500.000", color: "bg-[#FFF9E6] text-[#EAB308]" },
-    { label: "Karyawan Aktif", value: "32 Orang", color: "bg-[#E6F0FF] text-[#2563EB]" },
-  ];
-  const stats = [
-    { label: "Total Gaji Dibayarkan", value: "Rp 1.200.000.000" },
-    { label: "Karyawan", value: "32" },
-    { label: "Zakat/Donasi", value: "Rp 85.000.000" },
-    { label: "Slip Gaji Bulan Ini", value: "32" },
-  ];
-  const tasks = [
-    { title: "Verifikasi slip gaji", date: "21 Mei 2024" },
-    { title: "Input data karyawan baru", date: "20 Mei 2024" },
-  ];
-  const upcoming = [
-    { title: "Jadwal Pembayaran Gaji", date: "25 Mei 2024", time: "09:00" },
-    { title: "Distribusi Zakat", date: "27 Mei 2024", time: "13:00" },
-  ];
+  const [userData, setUserData] = useState<any>(null);
+  const [loadingUser, setLoadingUser] = useState(true);
+
+  const summary = getSummary();
+  const stats = getStats();
+  const tasks = getTasks();
+  const upcoming = getUpcoming();
   const days = Array.from({ length: 31 }, (_, i) => i + 1);
   const today = 27;
-  const reports = [
-    { label: "Jurnal Umum", icon: "📒" },
-    { label: "Buku Besar", icon: "📚" },
-    { label: "Neraca", icon: "📊" },
-    { label: "Laba Rugi", icon: "💹" },
-    { label: "Arus Kas", icon: "💵" },
-    { label: "Dana Sosial Khusus", icon: "🤲" },
-  ];
+  const reports = getReports();
 
   // Sidebar mobile state
   const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  const router = useRouter();
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+
+  useEffect(() => {
+    const auth = getAuth();
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (user && user.email) {
+        const data = await getUser(user.email);
+        setUserData(data);
+      }
+      setLoadingUser(false);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  const userName = userData?.name || "Bapak/Ibu HR";
+  const userRole = userData?.role || "HR";
+
+  const handleLogout = async () => {
+    const auth = getAuth();
+    await signOut(auth);
+    router.push("/login");
+  };
 
   return (
     <div className="min-h-screen bg-[#F6F8FA] flex">
@@ -73,20 +89,12 @@ export default function HRKeuanganDashboard() {
       )}
       {/* Main Content */}
       <main className="flex-1 flex flex-col min-h-screen overflow-x-auto">
-        {/* Topbar */}
-        <header className="sticky top-0 z-20 w-full bg-white/60 backdrop-blur-lg border-b border-gray-100 flex items-center justify-between px-4 sm:px-8 py-4 md:py-5">
-          <div className="flex flex-col gap-0.5">
-            <span className="text-xs text-gray-500">Assalamu'alaikum,</span>
-            <span className="font-extrabold text-2xl md:text-3xl text-gray-900 tracking-tight font-jakarta">{userName}</span>
-            <span className="text-xs text-gray-400 font-medium">Selamat datang di ZAFRA Payroll & Keuangan Syariah</span>
-          </div>
-          <div className="flex items-center gap-4">
-            {/* User Avatar */}
-            <div className="w-10 h-10 rounded-full bg-[#00C570] flex items-center justify-center text-white font-bold text-lg border-2 border-white shadow-md select-none">
-              HR
-            </div>
-          </div>
-        </header>
+        <Topbar
+          userName={userName}
+          userRole={userRole}
+          userPhoto={userData?.photo}
+          loading={loadingUser}
+        />
         {/* Progress & Summary */}
         <section className="px-2 sm:px-4 md:px-8 py-6 flex flex-col gap-8 w-full max-w-[1600px] mx-auto">
           <div className="flex flex-col lg:flex-row gap-8">

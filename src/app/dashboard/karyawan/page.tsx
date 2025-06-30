@@ -407,7 +407,7 @@ export default function KaryawanDashboard() {
         </header>
 
         {/* Dashboard content */}
-        <main className="flex-1 overflow-y-auto p-6">
+        <main className="flex-2 overflow-y-auto p-6">
           {/* Greeting and quick actions */}
           <div className="mb-6">
             <h2 className="text-xl font-semibold text-gray-900 mb-2">Halo, user!</h2>
@@ -465,7 +465,7 @@ export default function KaryawanDashboard() {
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
             {/* Salary breakdown - Modern card design */}
-            <div className="lg:col-span-2 space-y-5">
+            <div className="lg:col-span-2 md:col-span-3 space-y-5">
               <Card>
                 <CardHeader>
                   <CardTitle>Rincian Gaji Bulan Ini</CardTitle>
