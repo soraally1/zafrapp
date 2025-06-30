@@ -90,7 +90,7 @@ export default function LoginPage() {
             <button type="submit" className="mt-2 bg-[#00C570] hover:bg-green-600 active:bg-green-700 text-white rounded-lg py-2 sm:py-3 font-semibold shadow transition text-base sm:text-lg" disabled={loading}>
               {loading ? "Loading..." : "Login"}
             </button>
-            <div className="flex justify-between items-center mt-1">
+            <div className="flex items-center mt-1">
               <div />
               <Link href="#" className="text-xs text-[#00C570] hover:underline font-semibold">Lupa password?</Link>
             </div>
