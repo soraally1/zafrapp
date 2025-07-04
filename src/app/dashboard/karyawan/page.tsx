@@ -362,13 +362,20 @@ export default function KaryawanDashboard() {
           <div className="flex items-center justify-between h-16 px-6">
             <div className="flex items-center space-x-4">
               <div>
-                <h1 className="text-lg font-semibold text-gray-900">Dashboard</h1>
-                <p className="text-xs text-gray-500">Selamat datang kembali, User</p>
+                <h1 className="text-lg font-semibold text-gray-900">Dashboard Karyawan</h1>
+                <p className="text-xs text-gray-500">Selamat datang kembali, Ahmad Rizki</p>
               </div>
             </div>
 
             <div className="flex items-center space-x-3">
-              
+              <div className="relative">
+                <Button variant="ghost" size="icon">
+                  <Bell className="h-5 w-5 text-gray-500" />
+                </Button>
+                <Badge className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs">
+                  3
+                </Badge>
+              </div>
 
               <Dropdown
                 align="right"
@@ -407,16 +414,26 @@ export default function KaryawanDashboard() {
         </header>
 
         {/* Dashboard content */}
-        <main className="flex-2 overflow-y-auto p-6">
+        <main className="flex-1 overflow-y-auto p-6">
           {/* Greeting and quick actions */}
-          <div className="mb-6">
-            <h2 className="text-xl font-semibold text-gray-900 mb-2">Halo, user!</h2>
-            <p className="text-gray-500 text-sm">Berikut ringkasan informasi gaji dan keuangan Anda.</p>
+          <div className="mb-6 flex justify-between items-center">
+            <div>
+              <h2 className="text-xl font-semibold text-gray-900 mb-2">Halo, Ahmad Rizki!</h2>
+              <p className="text-gray-500 text-sm">Berikut ringkasan informasi gaji dan keuangan Anda.</p>
+            </div>
+            <div className="flex space-x-2">
+              <Button variant="secondary" className="shadow-sm">
+                <FileText className="mr-2 h-4 w-4" /> Lihat Slip Gaji
+              </Button>
+              <Button variant="primary" className="shadow-sm">
+                <DollarSign className="mr-2 h-4 w-4" /> Ajukan Pinjaman
+              </Button>
+            </div>
           </div>
 
           {/* Salary overview cards - Modern grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
-            <Card className="border-indigo-100 bg-gradient-to-br from-indigo-50 to-white">
+            <Card className="border-indigo-100 bg-gradient-to-br from-indigo-50 to-white shadow-md hover:shadow-lg transition-shadow duration-300">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Gaji Bulan Ini</CardTitle>
                 <DollarSign className="h-4 w-4 text-indigo-500" />
@@ -427,7 +444,7 @@ export default function KaryawanDashboard() {
               </CardContent>
             </Card>
 
-            <Card>
+            <Card className="shadow-md hover:shadow-lg transition-shadow duration-300">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Total Tahun Ini</CardTitle>
                 <TrendingUp className="h-4 w-4 text-gray-500" />
@@ -438,7 +455,7 @@ export default function KaryawanDashboard() {
               </CardContent>
             </Card>
 
-            <Card>
+            <Card className="shadow-md hover:shadow-lg transition-shadow duration-300">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Bonus</CardTitle>
                 <Gift className="h-4 w-4 text-gray-500" />
@@ -449,7 +466,7 @@ export default function KaryawanDashboard() {
               </CardContent>
             </Card>
 
-            <Card>
+            <Card className="shadow-md hover:shadow-lg transition-shadow duration-300">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Status Zakat</CardTitle>
                 <Shield className="h-4 w-4 text-gray-500" />
@@ -465,8 +482,8 @@ export default function KaryawanDashboard() {
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
             {/* Salary breakdown - Modern card design */}
-            <div className="lg:col-span-2 md:col-span-3 space-y-5">
-              <Card>
+            <div className="lg:col-span-2 space-y-5">
+              <Card className="shadow-md hover:shadow-lg transition-shadow duration-300">
                 <CardHeader>
                   <CardTitle>Rincian Gaji Bulan Ini</CardTitle>
                   <CardDescription>Detail pendapatan dan potongan bulan Januari 2024</CardDescription>
@@ -527,7 +544,7 @@ export default function KaryawanDashboard() {
               </Card>
 
               {/* Zakat calculation - Modern card */}
-              <Card>
+              <Card className="shadow-md hover:shadow-lg transition-shadow duration-300">
                 <CardHeader>
                   <CardTitle>Perhitungan Zakat</CardTitle>
                   <CardDescription>Berdasarkan total tabungan dan penghasilan</CardDescription>
@@ -574,7 +591,7 @@ export default function KaryawanDashboard() {
 
             {/* Right sidebar - Calendar and events */}
             <div className="space-y-5">
-              <Card>
+              <Card className="shadow-md hover:shadow-lg transition-shadow duration-300">
                 <CardHeader>
                   <CardTitle>Kalender</CardTitle>
                   <CardDescription>Januari 2024</CardDescription>
@@ -584,7 +601,7 @@ export default function KaryawanDashboard() {
                 </CardContent>
               </Card>
 
-              <Card>
+              <Card className="shadow-md hover:shadow-lg transition-shadow duration-300">
                 <CardHeader>
                   <CardTitle>Event Mendatang</CardTitle>
                 </CardHeader>
@@ -608,7 +625,7 @@ export default function KaryawanDashboard() {
                 </CardContent>
               </Card>
 
-              <Card>
+              <Card className="shadow-md hover:shadow-lg transition-shadow duration-300">
                 <CardHeader>
                   <CardTitle>Ringkasan Keuangan</CardTitle>
                 </CardHeader>
