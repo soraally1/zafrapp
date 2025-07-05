@@ -1,6 +1,8 @@
 "use client";
-import { useState } from "react";
-import { FiDownload, FiSearch, FiFilter, FiCheckCircle, FiAlertCircle, FiX, FiFileText, FiEdit2, FiPlus, FiTrendingUp, FiTrendingDown, FiCreditCard, FiBarChart2, FiZap } from "react-icons/fi";
+import { useState, useEffect, useMemo, Fragment } from "react";
+import { db } from "@/lib/firebaseApi";
+import { collection, query, onSnapshot, orderBy, Timestamp, addDoc, doc, deleteDoc } from "firebase/firestore";
+import { FiDownload, FiSearch, FiFilter, FiCheckCircle, FiAlertCircle, FiX, FiFileText, FiEdit2, FiPlus, FiTrendingUp, FiTrendingDown, FiCreditCard, FiBarChart2, FiZap, FiHelpCircle, FiClock, FiChevronDown, FiTrash2 } from "react-icons/fi";
 import Sidebar from "@/app/components/Sidebar";
 import Topbar from "@/app/components/Topbar";
 import { Bar } from "react-chartjs-2";
@@ -16,23 +18,17 @@ import {
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
-const mockSummary = {
-  income: 50000000,
-  expenses: 32000000,
-  zis: 8000000,
-  net: 10000000,
-  cash: 15000000,
-};
-
-const mockTransactions = [
-  { id: "TRX001", date: "2024-06-01", desc: "Penjualan Produk", category: "Pendapatan", amount: 12000000, type: "Halal", },
-  { id: "TRX002", date: "2024-06-02", desc: "Pembelian Bahan Baku", category: "Beban Pokok", amount: -5000000, type: "Halal", },
-  { id: "TRX003", date: "2024-06-03", desc: "Pendapatan Bunga Bank", category: "Pendapatan Lain", amount: 200000, type: "Haram", },
-  { id: "TRX004", date: "2024-06-04", desc: "Donasi ZIS", category: "ZIS", amount: 3000000, type: "Halal", },
-  { id: "TRX005", date: "2024-06-05", desc: "Pembayaran Gaji", category: "Beban Operasional", amount: -7000000, type: "Halal", },
-  { id: "TRX006", date: "2024-06-06", desc: "Pembelian Peralatan", category: "Aset Tetap", amount: -2000000, type: "Syubhat", },
-  { id: "TRX007", date: "2024-06-07", desc: "Distribusi ZIS", category: "ZIS", amount: -2500000, type: "Halal", },
-];
+// Define the structure of a transaction
+interface Transaction {
+  id: string;
+  date: string;
+  desc: string;
+  category: string;
+  amount: number;
+  aiStatus?: 'Halal' | 'Haram' | 'Syubhat' | 'pending';
+  aiExplanation?: string;
+  createdAt?: Timestamp;
+}
 
 const mockTabs = [
   { key: "journal", label: "Jurnal Umum" },
@@ -84,10 +80,32 @@ const CATEGORY_OPTIONS = [
   "Aset Tetap",
   "ZIS",
   "Pendapatan Lain",
+  "Pengeluaran lain",
 ];
-const TYPE_OPTIONS = ["Halal", "Syubhat", "Haram"];
+const TYPE_OPTIONS = ["Halal", "Syubhat", "Haram", "pending"] as const;
+
+const StatusBadge = ({ status }: { status: Transaction['aiStatus'] }) => {
+  switch (status) {
+    case 'Halal':
+      return <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-green-50 text-green-600"><FiCheckCircle /> Halal</span>;
+    case 'Syubhat':
+      return <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-yellow-50 text-yellow-600"><FiHelpCircle /> Syubhat</span>;
+    case 'Haram':
+      return <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-red-50 text-red-600"><FiAlertCircle /> Haram</span>;
+    default:
+      return <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600"><FiClock /> Pending</span>;
+  }
+};
 
 function formatCurrency(amount: number) {
+  if (typeof amount !== 'number' || isNaN(amount)) {
+    return new Intl.NumberFormat("id-ID", {
+      style: "currency",
+      currency: "IDR",
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(0);
+  }
   return new Intl.NumberFormat("id-ID", {
     style: "currency",
     currency: "IDR",
@@ -97,47 +115,117 @@ function formatCurrency(amount: number) {
 }
 
 export default function ReportPage() {
-  const [tab, setTab] = useState("journal");
-  const [typeFilter, setTypeFilter] = useState("");
-  const [categoryFilter, setCategoryFilter] = useState("");
-  const [dateFrom, setDateFrom] = useState("");
-  const [dateTo, setDateTo] = useState("");
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Filtering and Search State
   const [search, setSearch] = useState("");
-  const [transactions, setTransactions] = useState(mockTransactions);
+  const [statusFilter, setStatusFilter] = useState<Transaction['aiStatus'] | 'all'>('all');
+  const [categoryFilter, setCategoryFilter] = useState('all');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
+
+  // UI State
+  const [tab, setTab] = useState('journal');
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  
+  // Add Modal State
+  const [showModal, setShowModal] = useState(false);
+  const [adding, setAdding] = useState(false);
+  const [formError, setFormError] = useState("");
   const [form, setForm] = useState({
     date: "",
     desc: "",
     category: CATEGORY_OPTIONS[0],
     amount: "",
-    type: TYPE_OPTIONS[0],
-  });
-  const [adding, setAdding] = useState(false);
-  const [showModal, setShowModal] = useState(false);
-  const [formError, setFormError] = useState("");
-  const [toast, setToast] = useState<string | null>(null);
-
-  // Filtered transactions
-  const filteredTx = transactions.filter((tx) => {
-    if (typeFilter && tx.type !== typeFilter) return false;
-    if (categoryFilter && tx.category !== categoryFilter) return false;
-    if (dateFrom && tx.date < dateFrom) return false;
-    if (dateTo && tx.date > dateTo) return false;
-    if (search && !(
-      tx.id.toLowerCase().includes(search.toLowerCase()) ||
-      tx.desc.toLowerCase().includes(search.toLowerCase())
-    )) return false;
-    return true;
   });
 
-  // Monthly chart data
-  const chartData = (() => {
-    // Group by month
+  // Delete Modal State
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+
+  // Toast Notification State
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+
+  const filteredTx = useMemo(() => {
+    return transactions
+      .filter(t => {
+        const searchLower = search.toLowerCase();
+        const date = t.createdAt ? t.createdAt.toDate() : new Date(t.date);
+        const from = dateFrom ? new Date(dateFrom) : null;
+        const to = dateTo ? new Date(dateTo) : null;
+
+        if (to) to.setHours(23, 59, 59, 999);
+
+        return (
+          (t.desc.toLowerCase().includes(searchLower) || t.category.toLowerCase().includes(searchLower)) &&
+          (statusFilter === 'all' || t.aiStatus === statusFilter) &&
+          (categoryFilter === 'all' || t.category === categoryFilter) &&
+          (!from || date >= from) &&
+          (!to || date <= to)
+        );
+      });
+  }, [transactions, search, statusFilter, categoryFilter, dateFrom, dateTo]);
+
+  useEffect(() => {
+    const q = query(collection(db, "transactionReports"), orderBy("createdAt", "desc"));
+    const unsubscribe = onSnapshot(q, (querySnapshot) => {
+      const reports: Transaction[] = [];
+      querySnapshot.forEach((doc) => {
+        const data = doc.data();
+        reports.push({
+          id: doc.id,
+          date: data.date,
+          desc: data.description, // Mapped from description
+          category: data.category,
+          amount: Number(data.nominal) || 0, // Mapped from nominal, ensure it's a number
+          aiStatus: data.aiStatus || 'pending',
+          aiExplanation: data.aiExplanation || '',
+          createdAt: data.createdAt,
+        });
+      });
+      setTransactions(reports);
+      setLoading(false);
+    }, (err) => {
+      console.error(err);
+      setError("Gagal memuat data laporan. Silakan coba lagi.");
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  const summary = useMemo(() => {
+    const result = filteredTx.reduce((acc, tx) => {
+        const amount = tx.amount || 0;
+        if (tx.category === "Pendapatan" || tx.category === "Pendapatan Lain") {
+            acc.income += amount;
+        } else if (tx.category.startsWith("Beban")) {
+            acc.expenses += Math.abs(amount);
+        } else if (tx.category === "ZIS") {
+            acc.zis += amount;
+        }
+        return acc;
+    }, { income: 0, expenses: 0, zis: 0 });
+
+    const net = result.income - result.expenses;
+    const cash = result.income - result.expenses; // Simplified cash calculation
+
+    return { ...result, net, cash };
+  }, [filteredTx]);
+
+  const chartData = useMemo(() => {
     const monthMap: { [month: string]: { income: number; expense: number } } = {};
-    transactions.forEach((tx) => {
+    filteredTx.forEach((tx) => {
       const month = tx.date.slice(0, 7); // YYYY-MM
       if (!monthMap[month]) monthMap[month] = { income: 0, expense: 0 };
-      if (tx.amount >= 0) monthMap[month].income += tx.amount;
-      else monthMap[month].expense += Math.abs(tx.amount);
+      const amount = tx.amount || 0;
+      if (tx.category.includes("Pendapatan")) {
+        monthMap[month].income += amount;
+      } else if (tx.category.startsWith("Beban")) {
+        monthMap[month].expense += Math.abs(amount);
+      }
     });
     const months = Object.keys(monthMap).sort();
     return {
@@ -155,40 +243,73 @@ export default function ReportPage() {
         },
       ],
     };
-  })();
+  }, [filteredTx]);
 
-  // Add new transaction
-  const handleAdd = (e: React.FormEvent) => {
+  const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormError("");
     if (!form.date || !form.desc || !form.amount) {
       setFormError("Semua field wajib diisi.");
       return;
     }
-    if (isNaN(Number(form.amount)) || form.amount === "") {
+    const amount = Number(form.amount);
+    if (isNaN(amount) || form.amount === "") {
       setFormError("Nominal harus berupa angka.");
       return;
     }
     setAdding(true);
-    setTimeout(() => {
-      setTransactions((prev) => [
-        {
-          id: `TRX${(prev.length + 1).toString().padStart(3, "0")}`,
-          date: form.date,
-          desc: form.desc,
-          category: form.category,
-          amount: Number(form.amount),
-          type: form.type,
-        },
-        ...prev,
-      ]);
-      setForm({ date: "", desc: "", category: CATEGORY_OPTIONS[0], amount: "", type: TYPE_OPTIONS[0] });
-      setAdding(false);
-      setShowModal(false);
-      setToast("Laporan berhasil ditambahkan!");
-      setTimeout(() => setToast(null), 2500);
-    }, 600);
+    try {
+        await addDoc(collection(db, "transactionReports"), {
+            date: form.date,
+            description: form.desc,
+            category: form.category,
+            nominal: amount,
+            aiStatus: 'pending',
+            createdAt: Timestamp.now(),
+        });
+        setForm({ date: "", desc: "", category: CATEGORY_OPTIONS[0], amount: "" });
+        setShowModal(false);
+        setToast({ message: "Laporan berhasil ditambahkan!", type: 'success' });
+        setTimeout(() => setToast(null), 2500);
+    } catch (error) {
+        console.error("Error adding document: ", error);
+        setFormError("Gagal menambahkan laporan. Silakan coba lagi.");
+    } finally {
+        setAdding(false);
+    }
   };
+
+  const handleDelete = async () => {
+    if (!deleteConfirm) return;
+    try {
+      await deleteDoc(doc(db, "transactionReports", deleteConfirm));
+      setToast({ message: "Laporan berhasil dihapus!", type: 'success' });
+      setTimeout(() => setToast(null), 2500);
+    } catch (error) {
+      console.error("Error deleting document: ", error);
+      setToast({ message: "Gagal menghapus laporan.", type: 'error' });
+      setTimeout(() => setToast(null), 2500);
+    } finally {
+      setShowDeleteModal(false);
+      setDeleteConfirm(null);
+    }
+  };
+
+  if (loading) {
+    return (
+        <div className="min-h-screen bg-[#F6F8FA] flex items-center justify-center">
+            <div className="text-gray-500">Memuat data...</div>
+        </div>
+    );
+  }
+
+  if (error) {
+      return (
+          <div className="min-h-screen bg-[#F6F8FA] flex items-center justify-center">
+              <div className="text-red-500 bg-red-100 p-4 rounded-xl">{error}</div>
+          </div>
+      );
+  }
 
   return (
     <div className="min-h-screen bg-[#F6F8FA] flex">
@@ -201,7 +322,7 @@ export default function ReportPage() {
               <h1 className="text-2xl md:text-3xl font-bold text-gray-800 mb-2">Laporan Keuangan & ZIS</h1>
               <p className="text-gray-600">Sistem pencatatan otomatis, validasi AI Syariah, dan ekspor laporan keuangan.</p>
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-2 flex-wrap">
               <button className="flex items-center gap-2 px-4 py-2 bg-[#00C570] text-white rounded-xl shadow hover:bg-green-700 transition font-semibold"><FiDownload /> Export PDF</button>
               <button className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-xl shadow hover:bg-blue-700 transition font-semibold"><FiDownload /> Export Excel</button>
               <button className="flex items-center gap-2 px-4 py-2 bg-gray-600 text-white rounded-xl shadow hover:bg-gray-700 transition font-semibold"><FiDownload /> Export CSV</button>
@@ -210,14 +331,25 @@ export default function ReportPage() {
             </div>
           </div>
 
-          {/* Toast Notification */}
-          {toast && (
-            <div className="fixed top-6 right-6 z-[100] px-4 py-2 rounded-xl shadow-lg text-white font-semibold flex items-center gap-2 bg-green-600 animate-fadeIn">
-              <FiCheckCircle /> {toast}
+          {showDeleteModal && (
+            <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+              <div className="bg-white rounded-2xl p-6 w-full max-w-sm mx-4 relative animate-fadeIn">
+                <h2 className="text-lg font-bold mb-4 flex items-center gap-2"><FiAlertCircle className="text-red-500"/> Konfirmasi Hapus</h2>
+                <p className="text-gray-600 mb-6">Anda yakin ingin menghapus laporan ini? Tindakan ini tidak dapat dibatalkan.</p>
+                <div className="flex justify-end gap-2">
+                  <button type="button" className="px-4 py-2 border rounded-xl" onClick={() => setShowDeleteModal(false)}>Batal</button>
+                  <button type="button" onClick={handleDelete} className="px-4 py-2 bg-red-600 text-white rounded-xl">Ya, Hapus</button>
+                </div>
+              </div>
             </div>
           )}
 
-          {/* Add Report Modal */}
+          {toast && (
+            <div className={`fixed top-6 right-6 z-[100] px-4 py-2 rounded-xl shadow-lg text-white font-semibold flex items-center gap-2 ${toast.type === 'success' ? 'bg-green-600' : 'bg-red-600'} animate-fadeIn`}>
+              <FiCheckCircle /> {toast.message}
+            </div>
+          )}
+
           {showModal && (
             <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
               <div className="bg-white rounded-2xl p-6 w-full max-w-lg mx-4 relative animate-fadeIn max-h-[90vh] overflow-y-auto">
@@ -243,12 +375,7 @@ export default function ReportPage() {
                     <label className="block text-xs font-medium text-gray-600 mb-1">Nominal</label>
                     <input type="number" className="w-full px-3 py-2 border rounded-xl" value={form.amount} onChange={e => setForm(f => ({ ...f, amount: e.target.value }))} required />
                   </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1">AI Syariah</label>
-                    <select className="w-full px-3 py-2 border rounded-xl" value={form.type} onChange={e => setForm(f => ({ ...f, type: e.target.value }))}>
-                      {TYPE_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-                    </select>
-                  </div>
+
                   <div className="flex justify-end gap-2 mt-4">
                     <button type="button" className="px-4 py-2 border rounded-xl" onClick={() => setShowModal(false)} disabled={adding}>Batal</button>
                     <button type="submit" className="px-4 py-2 bg-[#00C570] text-white rounded-xl" disabled={adding}>{adding ? 'Menambah...' : 'Tambah Laporan'}</button>
@@ -258,11 +385,12 @@ export default function ReportPage() {
             </div>
           )}
 
-          {/* Chart */}
           <div className="bg-white rounded-xl shadow-sm p-4 mb-8 flex flex-col md:flex-row gap-6 items-center">
-            <div className="flex-1">
+            <div className="flex-1 w-full">
               <div className="font-semibold text-gray-700 mb-2 flex items-center gap-2"><FiBarChart2 /> Trend Pendapatan & Pengeluaran Bulanan</div>
-              <Bar data={chartData} options={{ responsive: true, plugins: { legend: { position: 'bottom' } } }} height={120} />
+              <div style={{height: '250px'}}>
+                <Bar data={chartData} options={{ responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }} />
+              </div>
             </div>
             <div className="hidden md:flex flex-col gap-2 items-center justify-center">
               <FiTrendingUp className="text-4xl text-[#00C570]" />
@@ -270,36 +398,34 @@ export default function ReportPage() {
             </div>
           </div>
 
-          {/* Summary Cards */}
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 mb-8">
             <div className="flex flex-col items-center bg-white rounded-xl py-4 shadow-sm border-t-4 border-blue-500">
               <FiTrendingUp className="text-2xl text-blue-500 mb-1" />
               <span className="text-xs text-gray-500">Pendapatan</span>
-              <span className="font-bold text-lg text-blue-600">{formatCurrency(mockSummary.income)}</span>
+              <span className="font-bold text-lg text-blue-600">{formatCurrency(summary.income)}</span>
             </div>
             <div className="flex flex-col items-center bg-white rounded-xl py-4 shadow-sm border-t-4 border-red-500">
               <FiTrendingDown className="text-2xl text-red-500 mb-1" />
               <span className="text-xs text-gray-500">Pengeluaran</span>
-              <span className="font-bold text-lg text-red-600">{formatCurrency(mockSummary.expenses)}</span>
+              <span className="font-bold text-lg text-red-600">{formatCurrency(summary.expenses)}</span>
             </div>
             <div className="flex flex-col items-center bg-white rounded-xl py-4 shadow-sm border-t-4 border-green-500">
               <FiCreditCard className="text-2xl text-green-500 mb-1" />
               <span className="text-xs text-gray-500">ZIS</span>
-              <span className="font-bold text-lg text-green-600">{formatCurrency(mockSummary.zis)}</span>
+              <span className="font-bold text-lg text-green-600">{formatCurrency(summary.zis)}</span>
             </div>
             <div className="flex flex-col items-center bg-white rounded-xl py-4 shadow-sm border-t-4 border-purple-500">
               <FiZap className="text-2xl text-purple-500 mb-1" />
               <span className="text-xs text-gray-500">Laba Bersih</span>
-              <span className="font-bold text-lg text-purple-600">{formatCurrency(mockSummary.net)}</span>
+              <span className="font-bold text-lg text-purple-600">{formatCurrency(summary.net)}</span>
             </div>
             <div className="flex flex-col items-center bg-white rounded-xl py-4 shadow-sm border-t-4 border-[#00C570]">
               <FiBarChart2 className="text-2xl text-[#00C570] mb-1" />
               <span className="text-xs text-gray-500">Saldo Kas</span>
-              <span className="font-bold text-lg text-[#00C570]">{formatCurrency(mockSummary.cash)}</span>
+              <span className="font-bold text-lg text-[#00C570]">{formatCurrency(summary.cash)}</span>
             </div>
           </div>
 
-          {/* Filter/Search Controls */}
           <div className="bg-white rounded-xl shadow-sm p-4 mb-8 flex flex-wrap gap-3 items-center">
             <div className="flex items-center gap-2">
               <FiSearch className="text-gray-400" />
@@ -307,178 +433,140 @@ export default function ReportPage() {
             </div>
             <div className="flex items-center gap-2">
               <FiFilter className="text-gray-400" />
-              <select className="px-2 py-1 border rounded" value={typeFilter} onChange={e => setTypeFilter(e.target.value)}>
-                <option value="">Semua Tipe</option>
-                <option value="Halal">Halal</option>
-                <option value="Syubhat">Syubhat</option>
-                <option value="Haram">Haram</option>
+              <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as Transaction['aiStatus'] | 'all')} className="bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <option value="all">Semua Status</option>
+                {TYPE_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
               </select>
-              <select className="px-2 py-1 border rounded" value={categoryFilter} onChange={e => setCategoryFilter(e.target.value)}>
-                <option value="">Semua Kategori</option>
-                <option value="Pendapatan">Pendapatan</option>
-                <option value="Beban Pokok">Beban Pokok</option>
-                <option value="Beban Operasional">Beban Operasional</option>
-                <option value="Aset Tetap">Aset Tetap</option>
-                <option value="ZIS">ZIS</option>
-                <option value="Pendapatan Lain">Pendapatan Lain</option>
+              <select value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)} className="bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <option value="all">Semua Kategori</option>
+                {CATEGORY_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
               </select>
             </div>
             <div className="flex items-center gap-2">
               <span className="text-gray-500 text-xs">Dari</span>
               <input type="date" className="px-2 py-1 border rounded" value={dateFrom} onChange={e => setDateFrom(e.target.value)} />
-              <span className="text-gray-500 text-xs">s/d</span>
+              <span className="text-gray-500 text-xs">Sampai</span>
               <input type="date" className="px-2 py-1 border rounded" value={dateTo} onChange={e => setDateTo(e.target.value)} />
             </div>
           </div>
 
-          {/* Tab Content */}
-          {filteredTx.length === 0 && (
-            <div className="bg-white rounded-xl shadow-sm p-8 flex flex-col items-center justify-center text-gray-400 text-center mb-8">
-              <FiFileText className="text-4xl mb-2" />
-              <div className="font-semibold">Belum ada data laporan untuk filter ini.</div>
-              <div className="text-xs">Silakan tambah laporan atau ubah filter.</div>
-            </div>
-          )}
-
-          {tab === "journal" && (
-            <div className="bg-white rounded-xl shadow-sm p-4 overflow-x-auto mb-8">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="text-gray-500 border-b border-gray-100">
-                    <th className="px-4 py-3 text-left font-medium">Tanggal</th>
-                    <th className="px-4 py-3 text-left font-medium">Deskripsi</th>
-                    <th className="px-4 py-3 text-left font-medium">Kategori</th>
-                    <th className="px-4 py-3 text-right font-medium">Nominal</th>
-                    <th className="px-4 py-3 text-center font-medium">AI Syariah</th>
+          <div className="bg-white rounded-xl shadow-sm overflow-x-auto">
+            <table className="w-full text-sm text-left text-gray-500">
+              <thead className="text-xs text-gray-700 uppercase bg-gray-50">
+                <tr>
+                  <th scope="col" className="px-6 py-3">ID Transaksi</th>
+                  <th scope="col" className="px-6 py-3">Tanggal</th>
+                  <th scope="col" className="px-6 py-3">Deskripsi</th>
+                  <th scope="col" className="px-6 py-3">Kategori</th>
+                  <th scope="col" className="px-6 py-3 text-right">Nominal</th>
+                  <th scope="col" className="px-6 py-3 text-center">Status AI</th>
+                  <th scope="col" className="px-6 py-3 text-center">Aksi</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredTx.length > 0 ? (
+                  filteredTx.map((tx: Transaction, index: number) => (
+                    <Fragment key={tx.id}>
+                      <tr className="bg-white border-b hover:bg-gray-50">
+                        <td className="px-6 py-4 font-mono text-xs text-gray-700">{tx.id.slice(0, 8)}...</td>
+                        <td className="px-6 py-4">{tx.date}</td>
+                        <td className="px-6 py-4 font-medium text-gray-900">{tx.desc}</td>
+                        <td className="px-6 py-4">{tx.category}</td>
+                        <td className="px-6 py-4 text-right font-semibold">{formatCurrency(tx.amount)}</td>
+                        <td className="px-6 py-4 text-center">
+                          <StatusBadge status={tx.aiStatus} />
+                        </td>
+                        <td className="px-6 py-4 text-center flex items-center justify-center gap-2">
+                          <button onClick={() => setExpandedId(expandedId === tx.id ? null : tx.id)} className="text-blue-600 hover:text-blue-800">
+                            <FiChevronDown className={`transition-transform ${expandedId === tx.id ? 'rotate-180' : ''}`} />
+                          </button>
+                          <button onClick={() => { setDeleteConfirm(tx.id); setShowDeleteModal(true); }} className="text-red-600 hover:text-red-800">
+                            <FiTrash2 />
+                          </button>
+                        </td>
+                      </tr>
+                      {expandedId === tx.id && (
+                        <tr className="bg-gray-50">
+                          <td colSpan={7} className="p-4">
+                            <div className="text-xs text-gray-700">
+                              <p><span className="font-semibold">Penjelasan AI:</span> {tx.aiExplanation || "Belum ada penjelasan."}</p>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </Fragment>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={7} className="text-center py-8 text-gray-500">
+                      Tidak ada transaksi yang cocok dengan filter.
+                    </td>
                   </tr>
-                </thead>
-                <tbody>
-                  {filteredTx.map((tx) => (
-                    <tr key={tx.id} className="border-b border-gray-50 hover:bg-gray-50 transition">
-                      <td className="px-4 py-3">{tx.date}</td>
-                      <td className="px-4 py-3">{tx.desc}</td>
-                      <td className="px-4 py-3">{tx.category}</td>
-                      <td className="px-4 py-3 text-right">{formatCurrency(tx.amount)}</td>
-                      <td className="px-4 py-3 text-center">
-                        {tx.type === "Halal" && <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-green-50 text-green-600"><FiCheckCircle /> Halal</span>}
-                        {tx.type === "Syubhat" && <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-yellow-50 text-yellow-600"><FiAlertCircle /> Syubhat</span>}
-                        {tx.type === "Haram" && <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-red-50 text-red-600"><FiX /> Haram</span>}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+                )}
+              </tbody>
+            </table>
+          </div>
 
-          {tab === "ledger" && (
-            <div className="bg-white rounded-xl shadow-sm p-4 overflow-x-auto mb-8">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="text-gray-500 border-b border-gray-100">
-                    <th className="px-4 py-3 text-left font-medium">Akun</th>
-                    <th className="px-4 py-3 text-right font-medium">Debit</th>
-                    <th className="px-4 py-3 text-right font-medium">Kredit</th>
-                    <th className="px-4 py-3 text-right font-medium">Saldo</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {mockLedger.map((row, idx) => (
-                    <tr key={idx} className="border-b border-gray-50 hover:bg-gray-50 transition">
-                      <td className="px-4 py-3">{row.account}</td>
-                      <td className="px-4 py-3 text-right">{formatCurrency(row.debit)}</td>
-                      <td className="px-4 py-3 text-right">{formatCurrency(row.credit)}</td>
-                      <td className="px-4 py-3 text-right font-bold">{formatCurrency(row.balance)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+          <div className="border-b border-gray-200 mb-6">
+             <nav className="-mb-px flex space-x-6 overflow-x-auto">
+               {mockTabs.map(t => (
+                <button key={t.key} onClick={() => setTab(t.key)} className={`whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm transition-colors ${tab === t.key ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>
+                  {t.label}
+                </button>
+              ))}
+            </nav>
+          </div>
 
-          {tab === "balance" && (
-            <div className="bg-white rounded-xl shadow-sm p-4 overflow-x-auto mb-8">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="text-gray-500 border-b border-gray-100">
-                    <th className="px-4 py-3 text-left font-medium">Akun</th>
-                    <th className="px-4 py-3 text-right font-medium">Jumlah</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {mockBalance.map((row, idx) => (
-                    <tr key={idx} className="border-b border-gray-50 hover:bg-gray-50 transition">
-                      <td className="px-4 py-3">{row.account}</td>
-                      <td className="px-4 py-3 text-right font-bold">{formatCurrency(row.amount)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+          {tab === "journal" && (<>
+              {filteredTx.length === 0 ? (
+                <div className="bg-white rounded-xl shadow-sm p-8 flex flex-col items-center justify-center text-gray-400 text-center mb-8">
+                  <FiFileText className="text-4xl mb-2" />
+                  <div className="font-semibold">Belum ada data laporan untuk filter ini.</div>
+                  <div className="text-xs">Silakan tambah laporan atau ubah filter.</div>
+                </div>
+              ) : (
+                <div className="bg-white rounded-xl shadow-sm p-4 overflow-x-auto mb-8">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="text-gray-500 border-b border-gray-100">
+                        <th className="px-4 py-3 text-left font-medium">Tanggal</th>
+                        <th className="px-4 py-3 text-left font-medium">Deskripsi</th>
+                        <th className="px-4 py-3 text-left font-medium">Kategori</th>
+                        <th className="px-4 py-3 text-right font-medium">Nominal</th>
+                        <th className="px-4 py-3 text-center font-medium">AI Syariah</th>
+                        <th className="px-4 py-3 w-12 text-center font-medium"></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredTx.map((tx: Transaction, index: number) => (
+                        <Fragment key={tx.id}>
+                          <tr onClick={() => setExpandedId(expandedId === tx.id ? null : tx.id)} className="cursor-pointer border-b border-gray-50 hover:bg-gray-50 transition">
+                            <td className="px-4 py-3">{tx.date}</td>
+                            <td className="px-4 py-3">{tx.desc}</td>
+                            <td className="px-4 py-3">{tx.category}</td>
+                            <td className="px-4 py-3 text-right">{formatCurrency(tx.amount)}</td>
+                            <td className="px-4 py-3 text-center"><StatusBadge status={tx.aiStatus} /></td>
+                            <td className="px-4 py-3 text-center text-gray-400"><FiChevronDown className={`transform transition-transform ${expandedId === tx.id ? 'rotate-180' : ''}`} /></td>
+                          </tr>
+                          {expandedId === tx.id && (
+                            <tr className="bg-gray-50"><td colSpan={6} className="p-4 text-sm text-gray-600">
+                                <p className="font-semibold text-gray-800 mb-1">Penjelasan AI:</p>
+                                <div className="whitespace-pre-wrap">{tx.aiExplanation || 'Tidak ada penjelasan dari AI.'}</div>
+                            </td></tr>
+                          )}
+                        </Fragment>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </>)}
 
-          {tab === "pl" && (
-            <div className="bg-white rounded-xl shadow-sm p-4 overflow-x-auto mb-8">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="text-gray-500 border-b border-gray-100">
-                    <th className="px-4 py-3 text-left font-medium">Deskripsi</th>
-                    <th className="px-4 py-3 text-right font-medium">Jumlah</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {mockPL.map((row, idx) => (
-                    <tr key={idx} className="border-b border-gray-50 hover:bg-gray-50 transition">
-                      <td className="px-4 py-3">{row.desc}</td>
-                      <td className={`px-4 py-3 text-right font-bold ${row.amount < 0 ? "text-red-600" : "text-blue-600"}`}>{formatCurrency(row.amount)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-
-          {tab === "cash" && (
-            <div className="bg-white rounded-xl shadow-sm p-4 overflow-x-auto mb-8">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="text-gray-500 border-b border-gray-100">
-                    <th className="px-4 py-3 text-left font-medium">Deskripsi</th>
-                    <th className="px-4 py-3 text-right font-medium">Jumlah</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {mockCash.map((row, idx) => (
-                    <tr key={idx} className="border-b border-gray-50 hover:bg-gray-50 transition">
-                      <td className="px-4 py-3">{row.desc}</td>
-                      <td className={`px-4 py-3 text-right font-bold ${row.amount < 0 ? "text-red-600" : "text-blue-600"}`}>{formatCurrency(row.amount)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-
-          {tab === "zis" && (
-            <div className="bg-white rounded-xl shadow-sm p-4 overflow-x-auto mb-8">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="text-gray-500 border-b border-gray-100">
-                    <th className="px-4 py-3 text-left font-medium">Deskripsi</th>
-                    <th className="px-4 py-3 text-right font-medium">Jumlah</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {mockZIS.map((row, idx) => (
-                    <tr key={idx} className="border-b border-gray-50 hover:bg-gray-50 transition">
-                      <td className="px-4 py-3">{row.desc}</td>
-                      <td className={`px-4 py-3 text-right font-bold ${row.amount < 0 ? "text-red-600" : "text-blue-600"}`}>{formatCurrency(row.amount)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+          {tab === "ledger" && ( <div className="bg-white rounded-xl shadow-sm p-4 overflow-x-auto mb-8"><table className="w-full text-sm"><thead><tr className="text-gray-500 border-b border-gray-100"><th className="px-4 py-3 text-left font-medium">Akun</th><th className="px-4 py-3 text-right font-medium">Debit</th><th className="px-4 py-3 text-right font-medium">Kredit</th><th className="px-4 py-3 text-right font-medium">Saldo</th></tr></thead><tbody>{mockLedger.map((row, idx) => (<tr key={idx} className="border-b border-gray-50 hover:bg-gray-50 transition"><td className="px-4 py-3">{row.account}</td><td className="px-4 py-3 text-right">{formatCurrency(row.debit)}</td><td className="px-4 py-3 text-right">{formatCurrency(row.credit)}</td><td className="px-4 py-3 text-right font-bold">{formatCurrency(row.balance)}</td></tr>))}</tbody></table></div>)}
+          {tab === "balance" && ( <div className="bg-white rounded-xl shadow-sm p-4 overflow-x-auto mb-8"><table className="w-full text-sm"><thead><tr className="text-gray-500 border-b border-gray-100"><th className="px-4 py-3 text-left font-medium">Akun</th><th className="px-4 py-3 text-right font-medium">Jumlah</th></tr></thead><tbody>{mockBalance.map((row, idx) => (<tr key={idx} className="border-b border-gray-50 hover:bg-gray-50 transition"><td className="px-4 py-3">{row.account}</td><td className="px-4 py-3 text-right font-bold">{formatCurrency(row.amount)}</td></tr>))}</tbody></table></div>)}
+          {tab === "pl" && ( <div className="bg-white rounded-xl shadow-sm p-4 overflow-x-auto mb-8"><table className="w-full text-sm"><thead><tr className="text-gray-500 border-b border-gray-100"><th className="px-4 py-3 text-left font-medium">Deskripsi</th><th className="px-4 py-3 text-right font-medium">Jumlah</th></tr></thead><tbody>{mockPL.map((row, idx) => (<tr key={idx} className="border-b border-gray-50 hover:bg-gray-50 transition"><td className="px-4 py-3">{row.desc}</td><td className={`px-4 py-3 text-right font-bold ${row.amount < 0 ? "text-red-600" : "text-blue-600"}`}>{formatCurrency(row.amount)}</td></tr>))}</tbody></table></div>)}
+          {tab === "cash" && ( <div className="bg-white rounded-xl shadow-sm p-4 overflow-x-auto mb-8"><table className="w-full text-sm"><thead><tr className="text-gray-500 border-b border-gray-100"><th className="px-4 py-3 text-left font-medium">Deskripsi</th><th className="px-4 py-3 text-right font-medium">Jumlah</th></tr></thead><tbody>{mockCash.map((row, idx) => (<tr key={idx} className="border-b border-gray-50 hover:bg-gray-50 transition"><td className="px-4 py-3">{row.desc}</td><td className={`px-4 py-3 text-right font-bold ${row.amount < 0 ? "text-red-600" : "text-blue-600"}`}>{formatCurrency(row.amount)}</td></tr>))}</tbody></table></div>)}
+          {tab === "zis" && ( <div className="bg-white rounded-xl shadow-sm p-4 overflow-x-auto mb-8"><table className="w-full text-sm"><thead><tr className="text-gray-500 border-b border-gray-100"><th className="px-4 py-3 text-left font-medium">Deskripsi</th><th className="px-4 py-3 text-right font-medium">Jumlah</th></tr></thead><tbody>{mockZIS.map((row, idx) => (<tr key={idx} className="border-b border-gray-50 hover:bg-gray-50 transition"><td className="px-4 py-3">{row.desc}</td><td className={`px-4 py-3 text-right font-bold ${row.amount < 0 ? "text-red-600" : "text-blue-600"}`}>{formatCurrency(row.amount)}</td></tr>))}</tbody></table></div>)}
         </div>
       </main>
     </div>
