@@ -5,75 +5,165 @@ import Sidebar from "../../components/Sidebar";
 import Topbar from "../../components/Topbar";
 import { useState, useEffect } from "react";
 import React from "react";
-import { Doughnut } from 'react-chartjs-2';
-import {
-  Chart as ChartJS,
-  ArcElement,
-  Tooltip,
-  Legend
-} from 'chart.js';
 import ReportCards from "./ReportCards";
-import {
-  getSummary,
-  getStats,
-  getTasks,
-  getUpcoming,
-  getReports
-} from "./hrDashboardService";
-import { getUser } from "@/app/api/service/firebaseUserService";
 import { getAuth, onAuthStateChanged, signOut } from "firebase/auth";
 import { useRouter } from "next/navigation";
-import { IoMdPerson, IoMdLogOut } from "react-icons/io";
-ChartJS.register(ArcElement, Tooltip, Legend);
-
-const menu = [
-  { label: "Dashboard", icon: "🏠" },
-  { label: "Payroll", icon: "💸" },
-  { label: "Zakat", icon: "🕌" },
-  { label: "Reports", icon: "📊" },
-  { label: "Employees", icon: "👥" },
-  { label: "Settings", icon: "⚙️" },
-];
+import {
+  fetchStats,
+  fetchTasks,
+  fetchUpcoming,
+  fetchReports,
+  addTask,
+  logActivity,
+  fetchRecentActivities
+} from "./hrDashboardService";
+import {
+  formatStats
+} from "./hrDashboardLogic";
+import {
+  calculateLedgerData,
+  calculateBalanceData,
+  calculateProfitLossData,
+  calculateCashFlowData,
+  calculateZisData,
+} from "./reports/financialReportLogic";
+import { getUserProfile } from "../../api/service/userProfileService";
+import { getAllPayrollUsersWithProfile } from "../../api/service/payrollService";
+import { format } from "date-fns";
+import { aggregatePayrollSummary, countProcessedSlips } from "./hrDashboardLogic";
+import { MdOutlineAttachMoney, MdOutlineCardGiftcard, MdOutlineRemoveCircleOutline, MdOutlineMosque, MdOutlineSavings } from 'react-icons/md';
+import { FiCheckCircle, FiAlertCircle, FiCalendar, FiBarChart2, FiUsers, FiClipboard, FiChevronRight, FiPlus, FiEdit2 } from 'react-icons/fi';
+import { addMonths, subMonths, startOfMonth, endOfMonth, getDaysInMonth, isSameDay, isSameMonth, isToday as isTodayFn } from 'date-fns';
 
 export default function HRKeuanganDashboard() {
-  // Dummy data
   const [userData, setUserData] = useState<any>(null);
   const [loadingUser, setLoadingUser] = useState(true);
-
-  const summary = getSummary();
-  const stats = getStats();
-  const tasks = getTasks();
-  const upcoming = getUpcoming();
-  const days = Array.from({ length: 31 }, (_, i) => i + 1);
-  const today = 27;
-  const reports = getReports();
+  const [summary, setSummary] = useState<any>(null);
+  const [stats, setStats] = useState<any[]>([]);
+  const [tasks, setTasks] = useState<any[]>([]);
+  const [upcoming, setUpcoming] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [transactions, setTransactions] = useState<any[]>([]);
+  const [showTaskModal, setShowTaskModal] = useState(false);
+  const [newTask, setNewTask] = useState({ title: '', date: '', time: '' });
+  // Remove localTasks and setLocalTasks if not needed
+  const [selectedDay, setSelectedDay] = useState<string>("");
+  const [calendarMonth, setCalendarMonth] = useState<Date>(new Date());
+  const [activities, setActivities] = useState<any[]>([]);
 
   // Sidebar mobile state
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const router = useRouter();
-  const [dropdownOpen, setDropdownOpen] = useState(false);
+
+  // Merge fetched tasks with local tasks
+  const allTasks = [...tasks];
 
   useEffect(() => {
     const auth = getAuth();
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      if (user && user.email) {
-        const data = await getUser(user.email);
-        setUserData(data);
+      if (user && user.uid) {
+        setLoadingUser(true);
+        // Fetch real user profile from Firestore
+        const profile = await getUserProfile(user.uid);
+        if (!profile || profile.role !== "hr-keuangan") {
+          // Not authorized, sign out and redirect
+          await signOut(auth);
+          router.push("/login");
+          return;
+        }
+        setUserData({ ...profile, uid: user.uid }); // Ensure uid is always present
+        setLoadingUser(false);
+        setLoading(true);
+        // Fetch payroll users for current month (progress & summary)
+        const currentMonth = format(new Date(), 'yyyy-MM');
+        const payrollResult = await getAllPayrollUsersWithProfile(currentMonth);
+        let payrollUsers: any[] = [];
+        if (payrollResult.success) payrollUsers = payrollResult.data || [];
+        // Use logic functions for summary and progress
+        const summary = aggregatePayrollSummary(payrollUsers);
+        const totalSlip = countProcessedSlips(payrollUsers);
+        setSummary({ ...summary, totalSlip });
+        // Fetch other dashboard data
+        const [statsData, tasksData, upcomingData, reportsData] = await Promise.all([
+          fetchStats(),
+          fetchTasks(user.uid),
+          fetchUpcoming(user.uid),
+          fetchReports(user.uid)
+        ]);
+        setStats(formatStats(statsData));
+        setTasks(tasksData);
+        setUpcoming(upcomingData);
+        setTransactions(reportsData);
+        setLoading(false);
+      } else {
+        setLoadingUser(false);
       }
-      setLoadingUser(false);
     });
     return () => unsubscribe();
   }, []);
 
-  const userName = userData?.name || "Bapak/Ibu HR";
-  const userRole = userData?.role || "HR";
+  useEffect(() => {
+    console.log('userData:', userData, 'uid:', userData?.uid, 'title:', newTask.title);
+  }, [userData, newTask.title]);
+
+  useEffect(() => {
+    fetchRecentActivities().then(setActivities);
+  }, []);
 
   const handleLogout = async () => {
     const auth = getAuth();
     await signOut(auth);
     router.push("/login");
   };
+
+  // Dummy calendar data (can be replaced with real data if needed)
+  const calendarMonthStr = format(calendarMonth, 'yyyy-MM');
+  const daysInMonth = getDaysInMonth(calendarMonth);
+  const days = Array.from({ length: daysInMonth }, (_, i) => i + 1);
+  const todayDate = new Date();
+
+  // Generate reports array using calculation functions and real transaction data
+  const reports = [
+    {
+      label: "Jurnal Umum",
+      createdAt: transactions[0]?.createdAt || undefined,
+      status: transactions.length > 0 ? "done" : "pending",
+    },
+    {
+      label: "Buku Besar",
+      createdAt: transactions[0]?.createdAt || undefined,
+      status: calculateLedgerData(transactions).length > 0 ? "done" : "pending",
+    },
+    {
+      label: "Neraca",
+      createdAt: transactions[0]?.createdAt || undefined,
+      status: calculateBalanceData(transactions).length > 0 ? "done" : "pending",
+    },
+    {
+      label: "Laba Rugi",
+      createdAt: transactions[0]?.createdAt || undefined,
+      status: calculateProfitLossData(transactions).length > 0 ? "done" : "pending",
+    },
+    {
+      label: "Arus Kas",
+      createdAt: transactions[0]?.createdAt || undefined,
+      status: calculateCashFlowData(transactions).length > 0 ? "done" : "pending",
+    },
+    {
+      label: "Dana Sosial Khusus",
+      createdAt: transactions[0]?.createdAt || undefined,
+      status: calculateZisData(transactions).length > 0 ? "done" : "pending",
+    },
+  ];
+
+  // Parse tasks to get a Set of days in the current month that have tasks
+  const daysWithTasks = new Set(
+    tasks
+      .filter(task => task.date && task.date.startsWith(calendarMonthStr))
+      .map(task => Number(task.date.split('-')[2]))
+  );
+  const tasksForSelectedDay = tasks.filter(task => task.date && task.date === selectedDay);
 
   return (
     <div className="min-h-screen bg-[#F6F8FA] flex">
@@ -90,202 +180,243 @@ export default function HRKeuanganDashboard() {
       {/* Main Content */}
       <main className="flex-1 flex flex-col min-h-screen overflow-x-auto">
         <Topbar
-          userName={userName}
-          userRole={userRole}
+          userName={userData?.name || "Bapak/Ibu HR"}
+          userRole={userData?.role || "HR"}
           userPhoto={userData?.photo}
           loading={loadingUser}
         />
         {/* Progress & Summary */}
-        <section className="px-2 sm:px-4 md:px-8 py-6 flex flex-col gap-8 w-full max-w-[1600px] mx-auto">
-          <div className="flex flex-col lg:flex-row gap-8">
+        <section className="px-2 pb-24 sm:px-4 md:px-8 py-6 flex flex-col gap-8 w-full max-w-[1600px] mx-auto">
+          {/* Progress & Calendar */}
+          <div className="flex flex-col md:flex-row gap-3 md:gap-6 w-full">
             {/* Progress Card */}
-            <div className="flex-1 bg-[#171B2A] rounded-2xl p-6 flex flex-col gap-4 text-white shadow-lg min-w-[260px]">
-              <span className="text-base">Progress Penggajian</span>
-              <span className="text-2xl font-bold">Anda telah memproses 32 slip gaji bulan ini!</span>
-              <button className="mt-2 bg-[#00C570] hover:bg-green-600 text-white font-semibold px-4 py-2 rounded-lg w-max focus:outline-none focus:ring-2 focus:ring-[#00C570]">Lihat Detail</button>
-              <div className="flex flex-col sm:flex-row gap-4 mt-4">
-                {summary.map((item, i) => (
-                  <div key={item.label} className={`flex-1 rounded-xl p-4 font-semibold shadow-sm ${item.color} flex flex-col items-start min-w-[120px] border border-[#e0e0e0]`}> 
-                    <span className="text-xs mb-1 opacity-80">{item.label}</span>
-                    <span className="text-lg">{item.value}</span>
-                  </div>
-                ))}
+            <div className="flex-1 w-full bg-gradient-to-br from-[#00C570]/90 to-[#171B2A] rounded-2xl p-2 sm:p-4 md:p-8 flex flex-col gap-4 sm:gap-6 text-white shadow-2xl relative mb-3 md:mb-0 md:overflow-hidden overflow-visible">
+              <span className="text-base flex items-center gap-2 font-semibold"><FiClipboard className="text-xl" /> Progress Penggajian</span>
+              <div className="flex flex-col sm:flex-row items-center gap-6">
+                {/* Circular Progress */}
+                <div className="relative w-20 h-20 flex items-center justify-center mb-4 sm:mb-0">
+                  <svg className="absolute top-0 left-0" width="80" height="80">
+                    <circle cx="40" cy="40" r="36" stroke="#e5e7eb" strokeWidth="8" fill="none" />
+                    <circle cx="40" cy="40" r="36" stroke="#00C570" strokeWidth="8" fill="none" strokeDasharray="226.2" strokeDashoffset="${summary && summary.totalSlip ? 226.2 - (summary.totalSlip / 20) * 226.2 : 226.2}" strokeLinecap="round" style={{ transition: 'stroke-dashoffset 0.6s' }} />
+                  </svg>
+                  <span className="text-2xl font-bold z-10">{summary ? summary.totalSlip : 0}</span>
+                </div>
+                <div className="flex flex-col gap-1 text-center sm:text-left">
+                  <span className="text-lg font-bold">{summary ? `Anda telah memproses ${summary.totalSlip || 0} slip gaji bulan ini!` : '...'}</span>
+                  <span className="text-xs text-white/80">Target: 20 slip</span>
+                </div>
               </div>
+              <button className="mt-2 bg-white/90 hover:bg-[#00C570] hover:text-white text-[#00C570] font-semibold px-4 py-2 rounded-lg w-max focus:outline-none focus:ring-2 focus:ring-[#00C570] shadow transition-all flex items-center gap-2 text-sm md:text-base">Lihat Detail <FiChevronRight /></button>
+              {/* In the Progress Penggajian card, summary stats row: */}
+              <div className="w-full min-w-0 flex flex-col sm:flex-row gap-2 sm:gap-4 mt-2 sm:mt-4 overflow-x-auto pb-2 scrollbar scrollbar-thumb-[#00C570]/40 scrollbar-track-gray-100 relative">
+                <div className="w-full min-w-0 flex flex-row flex-nowrap gap-x-2 sm:gap-x-4">
+                  {/* Summary Stats with Icons */}
+                  <div className="flex-shrink-0 min-w-[100px] sm:min-w-[120px] md:min-w-[140px] rounded-xl p-4 font-semibold shadow bg-white/10 flex flex-col items-start border border-[#e0e0e0] gap-2">
+                    <span className="flex items-center gap-2 text-xs mb-1 opacity-80"><MdOutlineAttachMoney className="text-blue-400" /> Gaji Pokok</span>
+                    <span className="text-lg font-bold">{summary ? summary.gaji.toLocaleString('id-ID') : '-'}</span>
+                  </div>
+                  <div className="flex-shrink-0 min-w-[100px] sm:min-w-[120px] md:min-w-[140px] rounded-xl p-4 font-semibold shadow bg-white/10 flex flex-col items-start border border-[#e0e0e0] gap-2">
+                    <span className="flex items-center gap-2 text-xs mb-1 opacity-80"><MdOutlineCardGiftcard className="text-green-400" /> Tunjangan</span>
+                    <span className="text-lg font-bold">{summary ? summary.tunjangan.toLocaleString('id-ID') : '-'}</span>
+                  </div>
+                  <div className="flex-shrink-0 min-w-[100px] sm:min-w-[120px] md:min-w-[140px] rounded-xl p-4 font-semibold shadow bg-white/10 flex flex-col items-start border border-[#e0e0e0] gap-2">
+                    <span className="flex items-center gap-2 text-xs mb-1 opacity-80"><MdOutlineRemoveCircleOutline className="text-red-400" /> Potongan</span>
+                    <span className="text-lg font-bold">{summary ? summary.potongan.toLocaleString('id-ID') : '-'}</span>
+                  </div>
+                  <div className="flex-shrink-0 min-w-[100px] sm:min-w-[120px] md:min-w-[140px] rounded-xl p-4 font-semibold shadow bg-white/10 flex flex-col items-start border border-[#e0e0e0] gap-2">
+                    <span className="flex items-center gap-2 text-xs mb-1 opacity-80"><MdOutlineMosque className="text-purple-400" /> Zakat</span>
+                    <span className="text-lg font-bold">{summary ? summary.zakat.toLocaleString('id-ID') : '-'}</span>
+                  </div>
+                  <div className="flex-shrink-0 min-w-[100px] sm:min-w-[120px] md:min-w-[140px] rounded-xl p-4 font-semibold shadow bg-white/10 flex flex-col items-start border border-[#e0e0e0] gap-2">
+                    <span className="flex items-center gap-2 text-xs mb-1 opacity-80"><MdOutlineSavings className="text-[#00C570]" /> Gaji Bersih</span>
+                    <span className="text-lg font-bold">{summary ? summary.bersih.toLocaleString('id-ID') : '-'}</span>
+                  </div>
+                </div>
+              </div>
+              {/* Helper text for mobile */}
+              <span className="block sm:hidden text-xs text-gray-400 mt-1 ml-1">Geser untuk melihat lebih banyak</span>
             </div>
             {/* Calendar */}
-            <div className="w-full max-w-xs bg-white rounded-2xl shadow p-6 flex flex-col gap-4 mt-8 lg:mt-0 border border-[#e0e0e0]">
+            <div className="flex-1 w-full bg-white rounded-2xl shadow-lg p-2 sm:p-4 md:p-6 flex flex-col gap-3 sm:gap-4 border border-[#e0e0e0] relative overflow-hidden mx-auto max-w-xs sm:max-w-sm md:max-w-xs">
               <div className="flex items-center justify-between mb-2">
-                <span className="font-bold text-lg">Mei 2024</span>
-                <span className="text-gray-400">{today} Mei</span>
+                <button onClick={() => setCalendarMonth(subMonths(calendarMonth, 1))} className="text-gray-400 hover:text-[#00C570] px-2 py-1 rounded transition-all">&lt;</button>
+                <span className="font-bold text-lg flex items-center gap-2">
+                  <FiCalendar className="text-blue-500" />
+                  {format(calendarMonth, 'MMMM yyyy')}
+                </span>
+                <button onClick={() => setCalendarMonth(addMonths(calendarMonth, 1))} className="text-gray-400 hover:text-[#00C570] px-2 py-1 rounded transition-all">&gt;</button>
               </div>
               <div className="grid grid-cols-7 gap-1 text-center text-xs">
-                {["M", "S", "S", "R", "K", "J", "S"].map((d) => (
-                  <span key={d} className="font-bold text-gray-400">{d}</span>
+                {['M', 'S', 'S', 'R', 'K', 'J', 'S'].map((d, i) => (
+                  <span key={d + i} className="font-bold text-gray-400">{d}</span>
                 ))}
-                {days.map((d) => (
-                  <span key={d} className={`rounded-full w-7 h-7 flex items-center justify-center ${d === today ? "bg-[#00C570] text-white font-bold" : "text-gray-700"}`}>{d}</span>
-                ))}
+                {days.map((d) => {
+                  const dayDate = new Date(calendarMonth.getFullYear(), calendarMonth.getMonth(), d);
+                  const isToday = isSameDay(dayDate, todayDate);
+                  const hasTask = daysWithTasks.has(d);
+                  const dayDateStr = format(dayDate, 'yyyy-MM-dd');
+                  return (
+                    <span
+                      key={d}
+                      onClick={() => setSelectedDay(dayDateStr)}
+                      className={`relative rounded-full w-7 h-7 flex items-center justify-center transition-all duration-200 cursor-pointer
+                        ${isToday ? 'bg-[#00C570] text-white font-bold shadow-lg' : ''}
+                        ${hasTask && !isToday ? 'bg-green-100 text-green-800 font-bold border border-green-400' : ''}
+                        ${selectedDay === dayDateStr ? 'ring-2 ring-[#00C570]' : ''}
+                        hover:bg-green-50`}
+                    >
+                      {d}
+                      {hasTask && !isToday && (
+                        <span className="absolute bottom-1 right-1 w-2 h-2 bg-[#00C570] rounded-full"></span>
+                      )}
+                    </span>
+                  );
+                })}
               </div>
-              <div className="mt-2">
-                <span className="block text-xs text-gray-500">Upcoming:</span>
-                {upcoming.map((item) => (
-                  <div key={item.title} className="flex items-center gap-2 mt-1">
-                    <span className="inline-block w-2 h-2 rounded-full bg-[#00C570]" />
-                    <span className="text-xs text-gray-700">{item.title} ({item.date}, {item.time})</span>
-                  </div>
-                ))}
-              </div>
+              {/* Below the calendar, show tasks for selected day */}
+              {selectedDay && (
+                <div className="mt-3">
+                  <span className="block text-xs font-semibold text-gray-700 mb-1">Tugas pada {selectedDay}:</span>
+                  {tasksForSelectedDay.length === 0 ? (
+                    <span className="text-xs text-gray-400">Tidak ada tugas pada hari ini.</span>
+                  ) : (
+                    <ul className="flex flex-col gap-1">
+                      {tasksForSelectedDay.map((task, idx) => (
+                        <li key={task.title + task.date + idx} className="text-xs text-gray-800 bg-green-50 rounded px-2 py-1">
+                          {task.title} {task.time && <span className="text-gray-500">({task.time})</span>}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              )}
             </div>
           </div>
           {/* Statistics & Tasks */}
-          <div className="flex flex-col lg:flex-row gap-8">
-            {/* Statistics */}
-            <div className="flex-1 grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-4">
-              {stats.map((item, idx) => {
-                // Only treat 'Total Gaji Dibayarkan' and 'Zakat/Donasi' as currency
-                const isCurrency = ["Total Gaji Dibayarkan", "Zakat/Donasi"].includes(item.label);
-                return (
-                  <div
-                    key={item.label}
-                    className="relative bg-white/60 backdrop-blur-lg border border-[#e0e0e0] rounded-2xl p-6 shadow-lg flex flex-col items-center justify-center min-h-[140px] overflow-hidden transition-transform duration-200 hover:-translate-y-1 hover:shadow-2xl hover:ring-2 hover:ring-[#00C570]/30 group"
-                    style={{ boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.10)' }}
-                  >
-                    {/* Icon */}
-                    <span className="text-3xl mb-2 animate-bounce-slow">
-                      {idx === 0 && <svg width="32" height="32" fill="none" viewBox="0 0 32 32"><circle cx="16" cy="16" r="16" fill="#00C570" fillOpacity="0.15"/><path d="M10 20l4-4 4 4 4-8" stroke="#00C570" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>}
-                      {idx === 1 && <svg width="32" height="32" fill="none" viewBox="0 0 32 32"><rect x="4" y="8" width="24" height="16" rx="4" fill="#00C570" fillOpacity="0.15"/><path d="M8 16h16M8 20h10" stroke="#00C570" strokeWidth="2" strokeLinecap="round"/></svg>}
-                      {idx === 2 && <svg width="32" height="32" fill="none" viewBox="0 0 32 32"><circle cx="16" cy="16" r="16" fill="#00C570" fillOpacity="0.15"/><path d="M16 10v12M10 16h12" stroke="#00C570" strokeWidth="2" strokeLinecap="round"/></svg>}
-                      {idx === 3 && <svg width="32" height="32" fill="none" viewBox="0 0 32 32"><rect x="8" y="8" width="16" height="16" rx="8" fill="#00C570" fillOpacity="0.15"/><path d="M16 12v8M12 16h8" stroke="#00C570" strokeWidth="2" strokeLinecap="round"/></svg>}
-                    </span>
-                    <span className="text-xs text-gray-500 mb-2 text-center font-medium">{item.label}</span>
-                    <span className="text-[#00C570] font-extrabold text-2xl md:text-3xl text-center whitespace-nowrap mb-1">
-                      {isCurrency ? formatRupiahShort(item.value) : item.value}
-                    </span>
-                    {/* ZAFRA watermark logo */}
-                    <Image src="/zafra.svg" alt="ZAFRA" width={48} height={48} className="absolute bottom-2 right-2 opacity-10 pointer-events-none select-none" />
-                  </div>
-                );
-              })}
-            </div>
-            {/* Tasks */}
-            <div className="w-full max-w-md bg-white/60 backdrop-blur-lg rounded-2xl shadow-lg p-6 flex flex-col gap-4 mt-8 lg:mt-0 border border-[#e0e0e0] relative overflow-hidden">
-              {/* ZAFRA watermark logo */}
-              <Image src="/zafra.svg" alt="ZAFRA" width={56} height={56} className="absolute bottom-2 right-2 opacity-10 pointer-events-none select-none" />
-              <div className="flex items-center justify-between mb-2">
-                <span className="font-bold text-lg">Tugas HR</span>
-                <span className="text-xs text-[#00C570] cursor-pointer hover:underline">Lihat semua</span>
-              </div>
-              <div className="flex flex-row gap-3">
-                {/* Timeline bar */}
-                <div className="flex flex-col items-center pt-2">
-                  {tasks.map((_, i) => (
-                    <React.Fragment key={i}>
-                      <span className={`w-3 h-3 rounded-full ${i === 0 ? 'bg-[#00C570]' : 'bg-gray-300'} border-2 border-white shadow transition-all duration-300`} />
-                      {i < tasks.length - 1 && <span className="w-1 h-8 bg-gradient-to-b from-[#00C570]/60 to-gray-200 mx-auto" />}
-                    </React.Fragment>
-                  ))}
+          <div className="flex flex-col md:flex-row w-full mt-4 md:mt-8">
+            {/* Tasks and Recent Activity side by side */}
+            <div className="flex flex-col md:flex-row gap-3 md:gap-6 w-full mt-4 md:mt-8">
+              {/* Tasks */}
+              <div className="flex-1 w-full bg-white/90 backdrop-blur-lg rounded-2xl shadow-2xl p-3 sm:p-6 md:p-9 flex flex-col gap-3 sm:gap-4 border border-[#e0e0e0] relative overflow-hidden min-h-[260px] mb-3 md:mb-0">
+                {/* ZAFRA watermark logo */}
+                <Image src="/zafra.svg" alt="ZAFRA" width={56} height={56} className="absolute bottom-2 right-2 opacity-10 pointer-events-none select-none" />
+                <div className="flex items-center justify-between mb-2">
+                  <span className="font-bold text-lg flex items-center gap-2"><FiClipboard className="text-[#00C570]" />Tugas HR</span>
+                  <span className="text-xs text-[#00C570] cursor-pointer hover:underline flex items-center gap-1">Lihat semua <FiChevronRight /></span>
                 </div>
-                {/* Task items */}
-                <div className="flex-1 flex flex-col gap-3">
-                  {tasks.map((item, i) => (
-                    <div
-                      key={item.title}
-                      className={`flex items-center gap-3 p-3 rounded-xl bg-white/80 shadow-sm hover:shadow-md transition-all duration-200 group ${i === 0 ? 'border-l-4 border-[#00C570]' : 'border-l-4 border-gray-200'}`}
-                      style={{ animation: `fadeInUp 0.4s ${i * 0.1 + 0.2}s both` }}
-                    >
-                      {/* Animated check/progress icon */}
-                      <span className={`inline-flex items-center justify-center w-8 h-8 rounded-full ${i === 0 ? 'bg-[#00C570]' : 'bg-gray-300'} text-white text-lg font-bold transition-all duration-300`}>
-                        {i === 0 ? (
-                          <svg className="animate-pulse" width="20" height="20" fill="none" viewBox="0 0 20 20"><circle cx="10" cy="10" r="10" fill="#00C570" fillOpacity="0.2"/><path d="M6 10.5l2.5 2.5L14 8" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                        ) : (
-                          <svg width="20" height="20" fill="none" viewBox="0 0 20 20"><circle cx="10" cy="10" r="10" fill="#d1fae5"/><path d="M6 10.5l2.5 2.5L14 8" stroke="#00C570" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                        )}
-                      </span>
-                      <div className="flex-1">
-                        <span className="block font-semibold text-gray-800 group-hover:text-[#00C570] transition-colors duration-200">{item.title}</span>
-                        <span className="block text-xs text-gray-500">{item.date}</span>
-                      </div>
+                <div className="flex-1 overflow-y-auto pr-1">
+                  {allTasks.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center h-32 text-gray-400 gap-2">
+                      <FiClipboard className="text-3xl" />
+                      <span className="text-sm">Belum ada tugas</span>
                     </div>
-                  ))}
+                  ) : (
+                    <ul className="flex flex-col gap-3">
+                      {allTasks.map((item, i) => (
+                        <li key={item.title + item.date + i} className={`flex items-center gap-3 p-3 rounded-xl bg-white/80 shadow-sm hover:shadow-md transition-all duration-200 group border-l-4 ${i === 0 ? 'border-[#00C570]' : 'border-gray-200'}`}> 
+                          <span className={`inline-flex items-center justify-center w-8 h-8 rounded-full ${i === 0 ? 'bg-[#00C570]' : 'bg-gray-300'} text-white text-lg font-bold transition-all duration-300`}>
+                            <FiCheckCircle className={i === 0 ? 'animate-pulse' : 'text-[#00C570]'} />
+                          </span>
+                          <div className="flex-1">
+                            <span className="block font-semibold text-gray-800 group-hover:text-[#00C570] transition-colors duration-200">{item.title}</span>
+                            <span className="block text-xs text-gray-500">{item.date}{item.time ? `, ${item.time}` : ''}</span>
+                          </div>
+                          <button className="text-gray-400 hover:text-[#00C570] p-1 rounded" title="Edit"><FiEdit2 /></button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                 </div>
+                {/* Add Task Button (sticky) */}
+                <button onClick={() => setShowTaskModal(true)} className="mt-2 self-end bg-[#00C570] hover:bg-green-600 text-white font-semibold px-4 py-2 rounded-lg text-sm shadow focus:outline-none focus:ring-2 focus:ring-[#00C570] transition-all duration-200 flex items-center gap-1 sticky bottom-0"><FiPlus /> Tambah Tugas</button>
               </div>
-              {/* Add Task Button (future extensibility) */}
-              <button className="mt-2 self-end bg-[#00C570] hover:bg-green-600 text-white font-semibold px-4 py-2 rounded-lg text-sm shadow focus:outline-none focus:ring-2 focus:ring-[#00C570] transition-all duration-200">+ Tambah Tugas</button>
+              {/* Recent Activity Feed */}
+              <div className="flex-1 w-full bg-white rounded-2xl shadow-2xl p-3 sm:p-6 flex flex-col gap-3 sm:gap-4 border border-[#e0e0e0] min-h-[260px] mt-3 md:mt-0">
+                <h3 className="font-bold text-lg mb-2 flex items-center gap-2"><FiBarChart2 className="text-[#00C570]" />Aktivitas Terbaru</h3>
+                {/* Placeholder: Replace with real activity data */}
+                <ul className="flex flex-col gap-2 text-sm text-gray-700">
+                  {activities.length === 0 && <li>Tidak ada aktivitas terbaru.</li>}
+                  {activities.map((act, idx) => (
+                    <li key={act.message + idx} className="flex items-center gap-2">
+                      <span className="inline-block w-2 h-2 rounded-full bg-[#00C570]" />
+                      <span>{act.message}</span>
+                      <span className="text-xs text-gray-400 ml-auto">{formatActivityTime(act.timestamp)}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
             </div>
           </div>
           {/* Reports Section */}
-          <div className="bg-white/60 backdrop-blur-lg rounded-2xl shadow-lg p-6 flex flex-col gap-6 mt-8 border border-[#e0e0e0] relative overflow-hidden">
+          <div className="bg-gradient-to-br from-white via-[#F6F8FA] to-[#e0f7ef] rounded-2xl shadow-2xl p-4 md:p-6 flex flex-col gap-6 mt-8 border border-[#e0e0e0] relative overflow-hidden overflow-x-auto">
             {/* ZAFRA watermark logo */}
             <Image src="/zafra.svg" alt="ZAFRA" width={56} height={56} className="absolute bottom-2 right-2 opacity-10 pointer-events-none select-none" />
             <div className="flex items-center justify-between mb-4">
-              <span className="font-bold text-lg">Laporan Keuangan</span>
-              <span className="text-xs text-[#00C570] cursor-pointer hover:underline">Lihat semua</span>
-            </div>
-            {/* Summary Chart */}
-            <div className="w-full flex flex-col md:flex-row items-center gap-6">
-              <div className="w-full max-w-xs mx-auto">
-                <Doughnut
-                  data={{
-                    labels: ['Gaji', 'Zakat', 'Dana Sosial'],
-                    datasets: [
-                      {
-                        label: 'Total (Rp) ',
-                        data: [1200000000, 85000000, 25000000],
-                        backgroundColor: [
-                          'rgba(0, 197, 112, 0.7)',
-                          'rgba(234, 179, 8, 0.7)',
-                          'rgba(37, 99, 235, 0.7)'
-                        ],
-                        borderColor: [
-                          'rgba(0, 197, 112, 1)',
-                          'rgba(234, 179, 8, 1)',
-                          'rgba(37, 99, 235, 1)'
-                        ],
-                        borderWidth: 2,
-                      },
-                    ],
-                  }}
-                  options={{
-                    plugins: {
-                      legend: {
-                        display: true,
-                        position: 'bottom',
-                        labels: {
-                          font: { family: 'Plus Jakarta Sans', size: 14 },
-                          color: '#171B2A',
-                        },
-                      },
-                    },
-                    cutout: '70%',
-                    responsive: true,
-                    maintainAspectRatio: false,
-                  }}
-                  height={180}
-                />
-              </div>
-              <div className="flex-1 flex flex-col justify-center gap-2">
-                <div className="flex items-center gap-3">
-                  <span className="inline-block w-3 h-3 rounded-full bg-[#00C570]"></span>
-                  <span className="font-semibold text-gray-700">Gaji</span>
-                  <span className="ml-auto font-bold text-[#00C570]">Rp 1.200.000.000</span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <span className="inline-block w-3 h-3 rounded-full bg-[#EAB308]"></span>
-                  <span className="font-semibold text-gray-700">Zakat</span>
-                  <span className="ml-auto font-bold text-[#EAB308]">Rp 85.000.000</span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <span className="inline-block w-3 h-3 rounded-full bg-[#2563EB]"></span>
-                  <span className="font-semibold text-gray-700">Dana Sosial</span>
-                  <span className="ml-auto font-bold text-[#2563EB]">Rp 25.000.000</span>
-                </div>
-              </div>
+              <span className="font-bold text-lg flex items-center gap-2"><FiBarChart2 className="text-[#00C570]" />Laporan Keuangan</span>
+              <button className="text-xs text-white bg-[#00C570] hover:bg-green-600 px-4 py-2 rounded-lg shadow font-semibold flex items-center gap-1 transition-all"><FiChevronRight /> Lihat semua</button>
             </div>
             {/* Report Cards */}
             <ReportCards reports={reports} />
           </div>
         </section>
       </main>
+      {showTaskModal && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 animate-fadeIn">
+          <div className="bg-white rounded-2xl p-8 w-full max-w-md mx-4 relative shadow-2xl">
+            <button className="absolute top-4 right-4 text-gray-400 hover:text-gray-700 text-2xl" onClick={() => setShowTaskModal(false)} aria-label="Tutup">
+              &times;
+            </button>
+            <h2 className="text-2xl font-bold mb-6 flex items-center gap-2 justify-center"><FiClipboard className="text-[#00C570]" />Tambah Tugas HR</h2>
+            <form onSubmit={async e => {
+              e.preventDefault();
+              if (!newTask.title) return;
+              if (!userData || !userData.uid) {
+                alert('User data not loaded. Please wait.');
+                return;
+              }
+              await addTask({ ...newTask, assignedTo: userData.uid });
+              await logActivity({
+                type: 'task',
+                message: `Tugas baru: ${newTask.title}`,
+                userId: userData.uid,
+              });
+              const updatedTasks = await fetchTasks(userData.uid);
+              setTasks(updatedTasks);
+              setNewTask({ title: '', date: '', time: '' });
+              setShowTaskModal(false);
+            }} className="flex flex-col gap-4">
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Judul Tugas</label>
+                <input type="text" className="w-full px-3 py-2 border rounded-xl" value={newTask.title} onChange={e => setNewTask(nt => ({ ...nt, title: e.target.value }))} required />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Tanggal</label>
+                <input type="date" className="w-full px-3 py-2 border rounded-xl" value={newTask.date} onChange={e => setNewTask(nt => ({ ...nt, date: e.target.value }))} />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Waktu (opsional)</label>
+                <input type="time" className="w-full px-3 py-2 border rounded-xl" value={newTask.time} onChange={e => setNewTask(nt => ({ ...nt, time: e.target.value }))} />
+              </div>
+              <button
+                type="submit"
+                disabled={!userData || !userData.uid || !newTask.title.trim()}
+                className="bg-[#00C570] hover:bg-green-600 text-white font-semibold px-4 py-2 rounded-lg text-base shadow focus:outline-none focus:ring-2 focus:ring-[#00C570] transition-all duration-200 flex items-center gap-1 justify-center disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                <FiPlus /> Tambah
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+      <style jsx global>{`
+@keyframes fadeIn {
+  from { opacity: 0; transform: scale(0.96); }
+  to { opacity: 1; transform: scale(1); }
+}
+.animate-fadeIn {
+  animation: fadeIn 0.25s ease;
+}
+`}</style>
     </div>
   );
 }
@@ -318,15 +449,13 @@ function AnimatedNumber({ value, className = "" }: { value: string | number; cla
   return <span className={className}>{display}</span>;
 }
 
-function formatRupiahShort(value: string) {
-  // Remove non-digit characters
-  const num = Number(value.replace(/[^\d]/g, ""));
-  if (isNaN(num)) return value;
-  if (num >= 1_000_000_000) {
-    return `Rp ${(num / 1_000_000_000).toFixed(1).replace(/\.0$/, "")} M`;
-  } else if (num >= 1_000_000) {
-    return `Rp ${(num / 1_000_000).toFixed(1).replace(/\.0$/, "")} JT`;
-  } else {
-    return `Rp ${num.toLocaleString('id-ID')}`;
-  }
-} 
+function formatActivityTime(ts: any) {
+  if (!ts) return '';
+  const date = ts.seconds ? new Date(ts.seconds * 1000) : new Date(ts);
+  const now = new Date();
+  const diff = Math.floor((now.getTime() - date.getTime()) / 60000);
+  if (diff < 1) return 'Baru saja';
+  if (diff < 60) return `${diff} menit lalu`;
+  if (diff < 1440) return `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
+  return `${date.getDate()} ${date.toLocaleString('id-ID', { month: 'short' })}`;
+}

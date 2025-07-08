@@ -9,6 +9,7 @@ import Sidebar from '../../../components/Sidebar';
 import Topbar from '../../../components/Topbar';
 import { getAuth, onAuthStateChanged, signOut } from "firebase/auth";
 import { useRouter } from "next/navigation";
+import { getUserProfile } from '@/app/api/service/userProfileService';
 
 type Employee = {
   id: string;
@@ -60,11 +61,20 @@ export default function EmployeeManagement() {
   useEffect(() => {
     const auth = getAuth();
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      if (user && user.email) {
-        const data = await getUser(user.email);
-        setUserData(data);
+      if (user && user.uid) {
+        setLoadingUser(true);
+        // Fetch real user profile from Firestore
+        const profile = await getUserProfile(user.uid);
+        if (!profile || profile.role !== 'hr-keuangan') {
+          await signOut(auth);
+          router.push('/login');
+          return;
+        }
+        setUserData({ ...profile, uid: user.uid }); // Ensure uid is always present
+        setLoadingUser(false);
+      } else {
+        setLoadingUser(false);
       }
-      setLoadingUser(false);
     });
     return () => unsubscribe();
   }, []);
@@ -211,7 +221,7 @@ export default function EmployeeManagement() {
       <main className="flex-1 flex flex-col min-h-screen overflow-x-auto">
         <Topbar
           userName={userData?.name || "Bapak/Ibu HR"}
-          userRole={userData?.role}
+          userRole={userData?.role || "HR"}
           userPhoto={userData?.photo}
           loading={loadingUser}
         />

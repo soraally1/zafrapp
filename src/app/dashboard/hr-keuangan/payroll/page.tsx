@@ -17,6 +17,9 @@ import {
   Legend,
 } from 'chart.js';
 import { usePayrollPageLogic } from './payrollLogic';
+import { getAuth, onAuthStateChanged, signOut } from "firebase/auth";
+import { useRouter } from "next/navigation";
+import { getUserProfile } from '@/app/api/service/userProfileService';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
@@ -93,7 +96,28 @@ function DefaultPayrollModal({ isOpen, onClose, onSave, defaultPayroll, employee
 }
 
 export default function PayrollPage() {
+  const [loadingUser, setLoadingUser] = useState(true);
+  const router = useRouter();
+  // Always call usePayrollPageLogic at the top, before any return
   const logic = usePayrollPageLogic();
+  useEffect(() => {
+    const auth = getAuth();
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (user && user.uid) {
+        const profile = await getUserProfile(user.uid);
+        if (!profile || profile.role !== 'hr-keuangan') {
+          await signOut(auth);
+          router.push('/login');
+          return;
+        }
+      }
+      setLoadingUser(false);
+    });
+    return () => unsubscribe();
+  }, []);
+  if (loadingUser) {
+    return <div className="flex items-center justify-center min-h-screen bg-[#F6F8FA]"><div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#00C570]"></div></div>;
+  }
   const {
     selectedMonth, setSelectedMonth,
     payrollUsers, loading, error,

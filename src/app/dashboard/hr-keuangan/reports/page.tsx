@@ -15,20 +15,23 @@ import {
   Tooltip,
   Legend,
 } from "chart.js";
+import { 
+  calculateLedgerData, 
+  calculateBalanceData, 
+  calculateProfitLossData, 
+  calculateCashFlowData, 
+  calculateZisData, 
+  calculateSummary, 
+  calculateChartData, 
+  formatCurrency,
+  type Transaction 
+} from "./financialReportLogic";
+import { exportToPDF, exportToExcel, exportToCSV } from "./exportUtils";
+import { getAuth, onAuthStateChanged, signOut } from "firebase/auth";
+import { useRouter } from "next/navigation";
+import { getUserProfile } from '@/app/api/service/userProfileService';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
-
-// Define the structure of a transaction
-interface Transaction {
-  id: string;
-  date: string;
-  desc: string;
-  category: string;
-  amount: number;
-  aiStatus?: 'Halal' | 'Haram' | 'Syubhat' | 'pending';
-  aiExplanation?: string;
-  createdAt?: Timestamp;
-}
 
 const mockTabs = [
   { key: "journal", label: "Jurnal Umum" },
@@ -37,40 +40,6 @@ const mockTabs = [
   { key: "pl", label: "Laba Rugi" },
   { key: "cash", label: "Arus Kas" },
   { key: "zis", label: "Laporan ZIS" },
-];
-
-const mockLedger = [
-  { account: "Kas", debit: 20000000, credit: 5000000, balance: 15000000 },
-  { account: "Pendapatan", debit: 0, credit: 12000000, balance: 12000000 },
-  { account: "Beban Operasional", debit: 7000000, credit: 0, balance: -7000000 },
-  { account: "Aset Tetap", debit: 2000000, credit: 0, balance: 2000000 },
-];
-
-const mockBalance = [
-  { account: "Kas", amount: 15000000 },
-  { account: "Aset Tetap", amount: 2000000 },
-  { account: "Modal", amount: 17000000 },
-];
-
-const mockPL = [
-  { desc: "Pendapatan", amount: 12000000 },
-  { desc: "Beban Pokok", amount: -5000000 },
-  { desc: "Beban Operasional", amount: -7000000 },
-  { desc: "Pendapatan Lain", amount: 200000 },
-  { desc: "Laba Bersih", amount: 12000000 - 5000000 - 7000000 + 200000 },
-];
-
-const mockCash = [
-  { desc: "Saldo Awal", amount: 5000000 },
-  { desc: "Penerimaan Kas", amount: 20000000 },
-  { desc: "Pengeluaran Kas", amount: -10000000 },
-  { desc: "Saldo Akhir", amount: 15000000 },
-];
-
-const mockZIS = [
-  { desc: "Penerimaan ZIS", amount: 8000000 },
-  { desc: "Distribusi ZIS", amount: -2500000 },
-  { desc: "Saldo ZIS", amount: 5500000 },
 ];
 
 const CATEGORY_OPTIONS = [
@@ -97,27 +66,15 @@ const StatusBadge = ({ status }: { status: Transaction['aiStatus'] }) => {
   }
 };
 
-function formatCurrency(amount: number) {
-  if (typeof amount !== 'number' || isNaN(amount)) {
-    return new Intl.NumberFormat("id-ID", {
-      style: "currency",
-      currency: "IDR",
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(0);
-  }
-  return new Intl.NumberFormat("id-ID", {
-    style: "currency",
-    currency: "IDR",
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(amount);
-}
+
 
 export default function ReportPage() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [userProfile, setUserProfile] = useState<any>(null);
+  const [loadingUser, setLoadingUser] = useState(true);
+  const router = useRouter();
 
   // Filtering and Search State
   const [search, setSearch] = useState("");
@@ -147,6 +104,11 @@ export default function ReportPage() {
 
   // Toast Notification State
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  
+  // Export Loading States
+  const [exportingPDF, setExportingPDF] = useState(false);
+  const [exportingExcel, setExportingExcel] = useState(false);
+  const [exportingCSV, setExportingCSV] = useState(false);
 
   const filteredTx = useMemo(() => {
     return transactions
@@ -167,6 +129,13 @@ export default function ReportPage() {
         );
       });
   }, [transactions, search, statusFilter, categoryFilter, dateFrom, dateTo]);
+
+  // Computed financial data based on real transactions
+  const ledgerData = useMemo(() => calculateLedgerData(filteredTx), [filteredTx]);
+  const balanceData = useMemo(() => calculateBalanceData(filteredTx), [filteredTx]);
+  const profitLossData = useMemo(() => calculateProfitLossData(filteredTx), [filteredTx]);
+  const cashFlowData = useMemo(() => calculateCashFlowData(filteredTx), [filteredTx]);
+  const zisData = useMemo(() => calculateZisData(filteredTx), [filteredTx]);
 
   useEffect(() => {
     const q = query(collection(db, "transactionReports"), orderBy("createdAt", "desc"));
@@ -196,54 +165,25 @@ export default function ReportPage() {
     return () => unsubscribe();
   }, []);
 
-  const summary = useMemo(() => {
-    const result = filteredTx.reduce((acc, tx) => {
-        const amount = tx.amount || 0;
-        if (tx.category === "Pendapatan" || tx.category === "Pendapatan Lain") {
-            acc.income += amount;
-        } else if (tx.category.startsWith("Beban")) {
-            acc.expenses += Math.abs(amount);
-        } else if (tx.category === "ZIS") {
-            acc.zis += amount;
+  useEffect(() => {
+    const auth = getAuth();
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (user && user.uid) {
+        const profile = await getUserProfile(user.uid);
+        setUserProfile(profile);
+        if (!profile || profile.role !== 'hr-keuangan') {
+          await signOut(auth);
+          router.push('/login');
+          return;
         }
-        return acc;
-    }, { income: 0, expenses: 0, zis: 0 });
-
-    const net = result.income - result.expenses;
-    const cash = result.income - result.expenses; // Simplified cash calculation
-
-    return { ...result, net, cash };
-  }, [filteredTx]);
-
-  const chartData = useMemo(() => {
-    const monthMap: { [month: string]: { income: number; expense: number } } = {};
-    filteredTx.forEach((tx) => {
-      const month = tx.date.slice(0, 7); // YYYY-MM
-      if (!monthMap[month]) monthMap[month] = { income: 0, expense: 0 };
-      const amount = tx.amount || 0;
-      if (tx.category.includes("Pendapatan")) {
-        monthMap[month].income += amount;
-      } else if (tx.category.startsWith("Beban")) {
-        monthMap[month].expense += Math.abs(amount);
       }
+      setLoadingUser(false);
     });
-    const months = Object.keys(monthMap).sort();
-    return {
-      labels: months,
-      datasets: [
-        {
-          label: "Pendapatan",
-          data: months.map((m) => monthMap[m].income),
-          backgroundColor: "#00C570",
-        },
-        {
-          label: "Pengeluaran",
-          data: months.map((m) => monthMap[m].expense),
-          backgroundColor: "#EF4444",
-        },
-      ],
-    };
-  }, [filteredTx]);
+    return () => unsubscribe();
+  }, []);
+
+  const summary = useMemo(() => calculateSummary(filteredTx), [filteredTx]);
+  const chartData = useMemo(() => calculateChartData(filteredTx), [filteredTx]);
 
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -284,14 +224,100 @@ export default function ReportPage() {
     try {
       await deleteDoc(doc(db, "transactionReports", deleteConfirm));
       setToast({ message: "Laporan berhasil dihapus!", type: 'success' });
-      setTimeout(() => setToast(null), 2500);
+      setTimeout(() => setToast(null), 2505);
     } catch (error) {
       console.error("Error deleting document: ", error);
       setToast({ message: "Gagal menghapus laporan.", type: 'error' });
-      setTimeout(() => setToast(null), 2500);
+      setTimeout(() => setToast(null), 2505);
     } finally {
       setShowDeleteModal(false);
       setDeleteConfirm(null);
+    }
+  };
+
+  // Export functions
+  const handleExportPDF = async () => {
+    setExportingPDF(true);
+    try {
+      const result = await exportToPDF(
+        filteredTx,
+        ledgerData,
+        balanceData,
+        profitLossData,
+        cashFlowData,
+        zisData,
+        summary,
+        tab
+      );
+      
+      if (result.success) {
+        setToast({ message: result.message, type: 'success' });
+      } else {
+        setToast({ message: result.message, type: 'error' });
+      }
+      setTimeout(() => setToast(null), 2505);
+    } catch (error) {
+      console.error('Export PDF error:', error);
+      setToast({ message: 'Gagal mengekspor PDF', type: 'error' });
+      setTimeout(() => setToast(null), 2505);
+    } finally {
+      setExportingPDF(false);
+    }
+  };
+
+  const handleExportExcel = async () => {
+    setExportingExcel(true);
+    try {
+      const result = await exportToExcel(
+        filteredTx,
+        ledgerData,
+        balanceData,
+        profitLossData,
+        cashFlowData,
+        zisData,
+        summary
+      );
+      
+      if (result.success) {
+        setToast({ message: result.message, type: 'success' });
+      } else {
+        setToast({ message: result.message, type: 'error' });
+      }
+      setTimeout(() => setToast(null), 2505);
+    } catch (error) {
+      console.error('Export Excel error:', error);
+      setToast({ message: 'Gagal mengekspor Excel', type: 'error' });
+      setTimeout(() => setToast(null), 2505);
+    } finally {
+      setExportingExcel(false);
+    }
+  };
+
+  const handleExportCSV = () => {
+    setExportingCSV(true);
+    try {
+      const result = exportToCSV(
+        filteredTx,
+        tab,
+        ledgerData,
+        balanceData,
+        profitLossData,
+        cashFlowData,
+        zisData
+      );
+      
+      if (result.success) {
+        setToast({ message: result.message, type: 'success' });
+      } else {
+        setToast({ message: result.message, type: 'error' });
+      }
+      setTimeout(() => setToast(null), 2505);
+    } catch (error) {
+      console.error('Export CSV error:', error);
+      setToast({ message: 'Gagal mengekspor CSV', type: 'error' });
+      setTimeout(() => setToast(null), 2505);
+    } finally {
+      setExportingCSV(false);
     }
   };
 
@@ -311,11 +337,20 @@ export default function ReportPage() {
       );
   }
 
+  if (loadingUser) {
+    return <div className="flex items-center justify-center min-h-screen bg-[#F6F8FA]"><div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#00C570]"></div></div>;
+  }
+
   return (
     <div className="min-h-screen bg-[#F6F8FA] flex">
       <Sidebar active="Report" />
       <main className="flex-1 flex flex-col min-h-screen overflow-x-auto">
-        <Topbar userName="Finance Manager" userRole="Manager" userPhoto={undefined} loading={false} />
+        <Topbar
+          userName={userProfile?.name || 'User'}
+          userRole={userProfile?.role || 'Role'}
+          userPhoto={userProfile?.photo}
+          loading={loadingUser}
+        />
         <div className="p-4 md:p-8 max-w-7xl mx-auto w-full">
           <div className="mb-8 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div>
@@ -323,11 +358,36 @@ export default function ReportPage() {
               <p className="text-gray-600">Sistem pencatatan otomatis, validasi AI Syariah, dan ekspor laporan keuangan.</p>
             </div>
             <div className="flex gap-2 flex-wrap">
-              <button className="flex items-center gap-2 px-4 py-2 bg-[#00C570] text-white rounded-xl shadow hover:bg-green-700 transition font-semibold"><FiDownload /> Export PDF</button>
-              <button className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-xl shadow hover:bg-blue-700 transition font-semibold"><FiDownload /> Export Excel</button>
-              <button className="flex items-center gap-2 px-4 py-2 bg-gray-600 text-white rounded-xl shadow hover:bg-gray-700 transition font-semibold"><FiDownload /> Export CSV</button>
-              <button className="flex items-center gap-2 px-4 py-2 bg-yellow-500 text-white rounded-xl shadow hover:bg-yellow-600 transition font-semibold"><FiEdit2 /> Tanda Tangan Digital</button>
-              <button onClick={() => setShowModal(true)} className="flex items-center gap-2 px-4 py-2 bg-[#3B82F6] text-white rounded-xl shadow hover:bg-blue-700 transition font-semibold"><FiPlus /> Tambah Laporan</button>
+              <button 
+                onClick={handleExportPDF}
+                disabled={exportingPDF}
+                className="flex items-center gap-2 px-4 py-2 bg-[#00C570] text-white rounded-xl shadow hover:bg-green-700 transition font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <FiDownload /> {exportingPDF ? 'Mengekspor...' : 'Export PDF'}
+              </button>
+              <button 
+                onClick={handleExportExcel}
+                disabled={exportingExcel}
+                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-xl shadow hover:bg-blue-700 transition font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <FiDownload /> {exportingExcel ? 'Mengekspor...' : 'Export Excel'}
+              </button>
+              <button 
+                onClick={handleExportCSV}
+                disabled={exportingCSV}
+                className="flex items-center gap-2 px-4 py-2 bg-gray-600 text-white rounded-xl shadow hover:bg-gray-700 transition font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <FiDownload /> {exportingCSV ? 'Mengekspor...' : 'Export CSV'}
+              </button>
+              <button className="flex items-center gap-2 px-4 py-2 bg-yellow-500 text-white rounded-xl shadow hover:bg-yellow-600 transition font-semibold">
+                <FiEdit2 /> Tanda Tangan Digital
+              </button>
+              <button 
+                onClick={() => setShowModal(true)} 
+                className="flex items-center gap-2 px-4 py-2 bg-[#3B82F6] text-white rounded-xl shadow hover:bg-blue-700 transition font-semibold"
+              >
+                <FiPlus /> Tambah Laporan
+              </button>
             </div>
           </div>
 
@@ -511,9 +571,9 @@ export default function ReportPage() {
              <nav className="-mb-px flex space-x-6 overflow-x-auto">
                {mockTabs.map(t => (
                 <button key={t.key} onClick={() => setTab(t.key)} className={`whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm transition-colors ${tab === t.key ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>
-                  {t.label}
-                </button>
-              ))}
+                {t.label}
+              </button>
+            ))}
             </nav>
           </div>
 
@@ -525,29 +585,29 @@ export default function ReportPage() {
                   <div className="text-xs">Silakan tambah laporan atau ubah filter.</div>
                 </div>
               ) : (
-                <div className="bg-white rounded-xl shadow-sm p-4 overflow-x-auto mb-8">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="text-gray-500 border-b border-gray-100">
-                        <th className="px-4 py-3 text-left font-medium">Tanggal</th>
-                        <th className="px-4 py-3 text-left font-medium">Deskripsi</th>
-                        <th className="px-4 py-3 text-left font-medium">Kategori</th>
-                        <th className="px-4 py-3 text-right font-medium">Nominal</th>
-                        <th className="px-4 py-3 text-center font-medium">AI Syariah</th>
+            <div className="bg-white rounded-xl shadow-sm p-4 overflow-x-auto mb-8">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-gray-500 border-b border-gray-100">
+                    <th className="px-4 py-3 text-left font-medium">Tanggal</th>
+                    <th className="px-4 py-3 text-left font-medium">Deskripsi</th>
+                    <th className="px-4 py-3 text-left font-medium">Kategori</th>
+                    <th className="px-4 py-3 text-right font-medium">Nominal</th>
+                    <th className="px-4 py-3 text-center font-medium">AI Syariah</th>
                         <th className="px-4 py-3 w-12 text-center font-medium"></th>
-                      </tr>
-                    </thead>
-                    <tbody>
+                  </tr>
+                </thead>
+                <tbody>
                       {filteredTx.map((tx: Transaction, index: number) => (
                         <Fragment key={tx.id}>
                           <tr onClick={() => setExpandedId(expandedId === tx.id ? null : tx.id)} className="cursor-pointer border-b border-gray-50 hover:bg-gray-50 transition">
-                            <td className="px-4 py-3">{tx.date}</td>
-                            <td className="px-4 py-3">{tx.desc}</td>
-                            <td className="px-4 py-3">{tx.category}</td>
-                            <td className="px-4 py-3 text-right">{formatCurrency(tx.amount)}</td>
+                      <td className="px-4 py-3">{tx.date}</td>
+                      <td className="px-4 py-3">{tx.desc}</td>
+                      <td className="px-4 py-3">{tx.category}</td>
+                      <td className="px-4 py-3 text-right">{formatCurrency(tx.amount)}</td>
                             <td className="px-4 py-3 text-center"><StatusBadge status={tx.aiStatus} /></td>
                             <td className="px-4 py-3 text-center text-gray-400"><FiChevronDown className={`transform transition-transform ${expandedId === tx.id ? 'rotate-180' : ''}`} /></td>
-                          </tr>
+                    </tr>
                           {expandedId === tx.id && (
                             <tr className="bg-gray-50"><td colSpan={6} className="p-4 text-sm text-gray-600">
                                 <p className="font-semibold text-gray-800 mb-1">Penjelasan AI:</p>
@@ -555,18 +615,167 @@ export default function ReportPage() {
                             </td></tr>
                           )}
                         </Fragment>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
             </>)}
 
-          {tab === "ledger" && ( <div className="bg-white rounded-xl shadow-sm p-4 overflow-x-auto mb-8"><table className="w-full text-sm"><thead><tr className="text-gray-500 border-b border-gray-100"><th className="px-4 py-3 text-left font-medium">Akun</th><th className="px-4 py-3 text-right font-medium">Debit</th><th className="px-4 py-3 text-right font-medium">Kredit</th><th className="px-4 py-3 text-right font-medium">Saldo</th></tr></thead><tbody>{mockLedger.map((row, idx) => (<tr key={idx} className="border-b border-gray-50 hover:bg-gray-50 transition"><td className="px-4 py-3">{row.account}</td><td className="px-4 py-3 text-right">{formatCurrency(row.debit)}</td><td className="px-4 py-3 text-right">{formatCurrency(row.credit)}</td><td className="px-4 py-3 text-right font-bold">{formatCurrency(row.balance)}</td></tr>))}</tbody></table></div>)}
-          {tab === "balance" && ( <div className="bg-white rounded-xl shadow-sm p-4 overflow-x-auto mb-8"><table className="w-full text-sm"><thead><tr className="text-gray-500 border-b border-gray-100"><th className="px-4 py-3 text-left font-medium">Akun</th><th className="px-4 py-3 text-right font-medium">Jumlah</th></tr></thead><tbody>{mockBalance.map((row, idx) => (<tr key={idx} className="border-b border-gray-50 hover:bg-gray-50 transition"><td className="px-4 py-3">{row.account}</td><td className="px-4 py-3 text-right font-bold">{formatCurrency(row.amount)}</td></tr>))}</tbody></table></div>)}
-          {tab === "pl" && ( <div className="bg-white rounded-xl shadow-sm p-4 overflow-x-auto mb-8"><table className="w-full text-sm"><thead><tr className="text-gray-500 border-b border-gray-100"><th className="px-4 py-3 text-left font-medium">Deskripsi</th><th className="px-4 py-3 text-right font-medium">Jumlah</th></tr></thead><tbody>{mockPL.map((row, idx) => (<tr key={idx} className="border-b border-gray-50 hover:bg-gray-50 transition"><td className="px-4 py-3">{row.desc}</td><td className={`px-4 py-3 text-right font-bold ${row.amount < 0 ? "text-red-600" : "text-blue-600"}`}>{formatCurrency(row.amount)}</td></tr>))}</tbody></table></div>)}
-          {tab === "cash" && ( <div className="bg-white rounded-xl shadow-sm p-4 overflow-x-auto mb-8"><table className="w-full text-sm"><thead><tr className="text-gray-500 border-b border-gray-100"><th className="px-4 py-3 text-left font-medium">Deskripsi</th><th className="px-4 py-3 text-right font-medium">Jumlah</th></tr></thead><tbody>{mockCash.map((row, idx) => (<tr key={idx} className="border-b border-gray-50 hover:bg-gray-50 transition"><td className="px-4 py-3">{row.desc}</td><td className={`px-4 py-3 text-right font-bold ${row.amount < 0 ? "text-red-600" : "text-blue-600"}`}>{formatCurrency(row.amount)}</td></tr>))}</tbody></table></div>)}
-          {tab === "zis" && ( <div className="bg-white rounded-xl shadow-sm p-4 overflow-x-auto mb-8"><table className="w-full text-sm"><thead><tr className="text-gray-500 border-b border-gray-100"><th className="px-4 py-3 text-left font-medium">Deskripsi</th><th className="px-4 py-3 text-right font-medium">Jumlah</th></tr></thead><tbody>{mockZIS.map((row, idx) => (<tr key={idx} className="border-b border-gray-50 hover:bg-gray-50 transition"><td className="px-4 py-3">{row.desc}</td><td className={`px-4 py-3 text-right font-bold ${row.amount < 0 ? "text-red-600" : "text-blue-600"}`}>{formatCurrency(row.amount)}</td></tr>))}</tbody></table></div>)}
+          {tab === "ledger" && (
+            <>
+              {ledgerData.length === 0 ? (
+                <div className="bg-white rounded-xl shadow-sm p-8 flex flex-col items-center justify-center text-gray-400 text-center mb-8">
+                  <FiFileText className="text-4xl mb-2" />
+                  <div className="font-semibold">Belum ada data buku besar untuk filter ini.</div>
+                  <div className="text-xs">Silakan tambah transaksi atau ubah filter.</div>
+                </div>
+              ) : (
+            <div className="bg-white rounded-xl shadow-sm p-4 overflow-x-auto mb-8">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-gray-500 border-b border-gray-100">
+                    <th className="px-4 py-3 text-left font-medium">Akun</th>
+                    <th className="px-4 py-3 text-right font-medium">Debit</th>
+                    <th className="px-4 py-3 text-right font-medium">Kredit</th>
+                    <th className="px-4 py-3 text-right font-medium">Saldo</th>
+                  </tr>
+                </thead>
+                <tbody>
+                      {ledgerData.map((row, idx) => (
+                    <tr key={idx} className="border-b border-gray-50 hover:bg-gray-50 transition">
+                      <td className="px-4 py-3">{row.account}</td>
+                      <td className="px-4 py-3 text-right">{formatCurrency(row.debit)}</td>
+                      <td className="px-4 py-3 text-right">{formatCurrency(row.credit)}</td>
+                      <td className="px-4 py-3 text-right font-bold">{formatCurrency(row.balance)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+            </>
+          )}
+          {tab === "balance" && (
+            <>
+              {balanceData.length === 0 ? (
+                <div className="bg-white rounded-xl shadow-sm p-8 flex flex-col items-center justify-center text-gray-400 text-center mb-8">
+                  <FiFileText className="text-4xl mb-2" />
+                  <div className="font-semibold">Belum ada data neraca untuk filter ini.</div>
+                  <div className="text-xs">Silakan tambah transaksi atau ubah filter.</div>
+                </div>
+              ) : (
+            <div className="bg-white rounded-xl shadow-sm p-4 overflow-x-auto mb-8">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-gray-500 border-b border-gray-100">
+                    <th className="px-4 py-3 text-left font-medium">Akun</th>
+                    <th className="px-4 py-3 text-right font-medium">Jumlah</th>
+                  </tr>
+                </thead>
+                <tbody>
+                      {balanceData.map((row, idx) => (
+                    <tr key={idx} className="border-b border-gray-50 hover:bg-gray-50 transition">
+                      <td className="px-4 py-3">{row.account}</td>
+                      <td className="px-4 py-3 text-right font-bold">{formatCurrency(row.amount)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+            </>
+          )}
+          {tab === "pl" && (
+            <>
+              {profitLossData.length === 0 ? (
+                <div className="bg-white rounded-xl shadow-sm p-8 flex flex-col items-center justify-center text-gray-400 text-center mb-8">
+                  <FiFileText className="text-4xl mb-2" />
+                  <div className="font-semibold">Belum ada data laba rugi untuk filter ini.</div>
+                  <div className="text-xs">Silakan tambah transaksi atau ubah filter.</div>
+                </div>
+              ) : (
+            <div className="bg-white rounded-xl shadow-sm p-4 overflow-x-auto mb-8">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-gray-500 border-b border-gray-100">
+                    <th className="px-4 py-3 text-left font-medium">Deskripsi</th>
+                    <th className="px-4 py-3 text-right font-medium">Jumlah</th>
+                  </tr>
+                </thead>
+                <tbody>
+                      {profitLossData.map((row, idx) => (
+                    <tr key={idx} className="border-b border-gray-50 hover:bg-gray-50 transition">
+                      <td className="px-4 py-3">{row.desc}</td>
+                      <td className={`px-4 py-3 text-right font-bold ${row.amount < 0 ? "text-red-600" : "text-blue-600"}`}>{formatCurrency(row.amount)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+            </>
+          )}
+          {tab === "cash" && (
+            <>
+              {cashFlowData.length === 0 ? (
+                <div className="bg-white rounded-xl shadow-sm p-8 flex flex-col items-center justify-center text-gray-400 text-center mb-8">
+                  <FiFileText className="text-4xl mb-2" />
+                  <div className="font-semibold">Belum ada data arus kas untuk filter ini.</div>
+                  <div className="text-xs">Silakan tambah transaksi atau ubah filter.</div>
+                </div>
+              ) : (
+            <div className="bg-white rounded-xl shadow-sm p-4 overflow-x-auto mb-8">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-gray-500 border-b border-gray-100">
+                    <th className="px-4 py-3 text-left font-medium">Deskripsi</th>
+                    <th className="px-4 py-3 text-right font-medium">Jumlah</th>
+                  </tr>
+                </thead>
+                <tbody>
+                      {cashFlowData.map((row, idx) => (
+                    <tr key={idx} className="border-b border-gray-50 hover:bg-gray-50 transition">
+                      <td className="px-4 py-3">{row.desc}</td>
+                      <td className={`px-4 py-3 text-right font-bold ${row.amount < 0 ? "text-red-600" : "text-blue-600"}`}>{formatCurrency(row.amount)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+            </>
+          )}
+          {tab === "zis" && (
+            <>
+              {zisData.length === 0 ? (
+                <div className="bg-white rounded-xl shadow-sm p-8 flex flex-col items-center justify-center text-gray-400 text-center mb-8">
+                  <FiFileText className="text-4xl mb-2" />
+                  <div className="font-semibold">Belum ada data laporan ZIS untuk filter ini.</div>
+                  <div className="text-xs">Silakan tambah transaksi ZIS atau ubah filter.</div>
+                </div>
+              ) : (
+            <div className="bg-white rounded-xl shadow-sm p-4 overflow-x-auto mb-8">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-gray-500 border-b border-gray-100">
+                    <th className="px-4 py-3 text-left font-medium">Deskripsi</th>
+                    <th className="px-4 py-3 text-right font-medium">Jumlah</th>
+                  </tr>
+                </thead>
+                <tbody>
+                      {zisData.map((row, idx) => (
+                    <tr key={idx} className="border-b border-gray-50 hover:bg-gray-50 transition">
+                      <td className="px-4 py-3">{row.desc}</td>
+                      <td className={`px-4 py-3 text-right font-bold ${row.amount < 0 ? "text-red-600" : "text-blue-600"}`}>{formatCurrency(row.amount)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+              )}
+            </>
+          )}
         </div>
       </main>
     </div>

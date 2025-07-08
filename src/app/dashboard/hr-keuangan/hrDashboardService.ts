@@ -1,43 +1,61 @@
 // Service for HR Dashboard data (dummy/static for now)
 
-export function getSummary() {
-  return [
-    { label: "Gaji Bulan Ini", value: "Rp 120.000.000", color: "bg-[#E6FFF4] text-[#00C570]" },
-    { label: "Zakat Terkumpul", value: "Rp 8.500.000", color: "bg-[#FFF9E6] text-[#EAB308]" },
-    { label: "Karyawan Aktif", value: "32 Orang", color: "bg-[#E6F0FF] text-[#2563EB]" },
-  ];
+import { db } from '@/lib/firebaseApi';
+import { collection, getDocs, query, where, orderBy, limit, addDoc, serverTimestamp } from 'firebase/firestore';
+
+export async function fetchSummary(userId: string) {
+  // Example: fetch payroll summary for the user
+  const q = query(collection(db, 'payrolls'), where('userId', '==', userId));
+  const snapshot = await getDocs(q);
+  // Aggregate summary here or in logic layer
+  return snapshot.docs.map(doc => doc.data());
 }
 
-export function getStats() {
-  return [
-    { label: "Total Gaji Dibayarkan", value: "Rp 1.200.000.000" },
-    { label: "Karyawan", value: "32" },
-    { label: "Zakat/Donasi", value: "Rp 85.000.000" },
-    { label: "Slip Gaji Bulan Ini", value: "32" },
-  ];
+export async function fetchStats() {
+  // Example: fetch stats from a 'stats' collection
+  const q = query(collection(db, 'stats'));
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map(doc => doc.data());
 }
 
-export function getTasks() {
-  return [
-    { title: "Verifikasi slip gaji", date: "21 Mei 2024" },
-    { title: "Input data karyawan baru", date: "20 Mei 2024" },
-  ];
+export async function fetchTasks(userId: string) {
+  // Example: fetch tasks assigned to the user
+  const q = query(collection(db, 'tasks'), where('assignedTo', '==', userId));
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map(doc => doc.data());
 }
 
-export function getUpcoming() {
-  return [
-    { title: "Jadwal Pembayaran Gaji", date: "25 Mei 2024", time: "09:00" },
-    { title: "Distribusi Zakat", date: "27 Mei 2024", time: "13:00" },
-  ];
+export async function fetchUpcoming(userId: string) {
+  // Example: fetch upcoming events for the user
+  const q = query(collection(db, 'upcoming'), where('userId', '==', userId), orderBy('date', 'asc'), limit(5));
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map(doc => doc.data());
 }
 
-export function getReports() {
-  return [
-    { label: "Jurnal Umum", icon: "📒" },
-    { label: "Buku Besar", icon: "📚" },
-    { label: "Neraca", icon: "📊" },
-    { label: "Laba Rugi", icon: "💹" },
-    { label: "Arus Kas", icon: "💵" },
-    { label: "Dana Sosial Khusus", icon: "🤲" },
-  ];
-} 
+export async function fetchReports(userId: string) {
+  // Example: fetch reports for the user
+  const q = query(collection(db, 'reports'), where('userId', '==', userId), orderBy('createdAt', 'desc'), limit(10));
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map(doc => doc.data());
+}
+
+export async function addTask(task: any) {
+  // Adds a new task to the 'tasks' collection
+  const docRef = await addDoc(collection(db, 'tasks'), task);
+  return docRef.id;
+}
+
+export async function logActivity({ type, message, userId, timestamp }: { type: string, message: string, userId: string, timestamp?: any }) {
+  await addDoc(collection(db, 'activities'), {
+    type,
+    message,
+    userId,
+    timestamp: timestamp || serverTimestamp(),
+  });
+}
+
+export async function fetchRecentActivities() {
+  const q = query(collection(db, 'activities'), orderBy('timestamp', 'desc'), limit(10));
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map(doc => doc.data());
+}

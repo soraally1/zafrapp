@@ -13,7 +13,6 @@ const menu = [
   { label: "Zakat", icon: <LiaDonateSolid size={24} />, path: "/dashboard/hr-keuangan/zakat" },
   { label: "Reports", icon: <LiaChartBarSolid size={24} />, path: "/dashboard/hr-keuangan/reports" },
   { label: "Employees", icon: <LiaUserSolid size={24} />, path: "/dashboard/hr-keuangan/karyawan" },
-  { label: "Settings", icon: <LiaCogSolid size={24} />, path: "/dashboard/hr-keuangan/settings" },
 ];
 
 interface SidebarProps {

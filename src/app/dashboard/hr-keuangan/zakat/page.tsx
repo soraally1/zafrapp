@@ -1,5 +1,5 @@
 "use client";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { FiUpload, FiCheckCircle, FiClock, FiFileText, FiSearch, FiFilter, FiDownload, FiEye, FiX, FiCheck, FiAlertCircle } from "react-icons/fi";
 import Sidebar from "@/app/components/Sidebar";
 import Topbar from "@/app/components/Topbar";
@@ -15,6 +15,9 @@ import {
   Tooltip,
   Legend,
 } from "chart.js";
+import { getAuth, onAuthStateChanged, signOut } from "firebase/auth";
+import { useRouter } from "next/navigation";
+import { getUserProfile } from '@/app/api/service/userProfileService';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, ArcElement, Title, Tooltip, Legend);
 
@@ -118,6 +121,9 @@ function formatCurrency(amount: number) {
 }
 
 export default function ZakatPage() {
+  // Move all hooks to the top, before any early return
+  const [loadingUser, setLoadingUser] = useState(true);
+  const router = useRouter();
   // Role-based UI (mock: 'admin' or 'manager')
   const [role] = useState<'admin' | 'manager'>("manager");
   // Filter/search state
@@ -142,6 +148,22 @@ export default function ZakatPage() {
   const [reports, setReports] = useState<{ [id: string]: string }>({});
   const [approvalNotes, setApprovalNotes] = useState<{ [id: string]: string }>({});
 
+  useEffect(() => {
+    const auth = getAuth();
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (user && user.uid) {
+        const profile = await getUserProfile(user.uid);
+        if (!profile || profile.role !== 'hr-keuangan') {
+          await signOut(auth);
+          router.push('/login');
+          return;
+        }
+      }
+      setLoadingUser(false);
+    });
+    return () => unsubscribe();
+  }, []);
+
   // Filtering logic
   const filteredTx = useMemo(() => {
     return mockTransactions.filter((tx) => {
@@ -158,6 +180,10 @@ export default function ZakatPage() {
       return true;
     });
   }, [typeFilter, lazFilter, statusFilter, dateFrom, dateTo, search]);
+
+  if (loadingUser) {
+    return <div className="flex items-center justify-center min-h-screen bg-[#F6F8FA]"><div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#00C570]"></div></div>;
+  }
 
   // Analytics data
   const monthlyData = {
