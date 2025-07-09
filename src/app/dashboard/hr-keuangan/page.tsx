@@ -210,26 +210,26 @@ export default function HRKeuanganDashboard() {
               {/* In the Progress Penggajian card, summary stats row: */}
               <div className="w-full min-w-0 flex flex-col sm:flex-row gap-2 sm:gap-4 mt-2 sm:mt-4 overflow-x-auto pb-2 scrollbar scrollbar-thumb-[#00C570]/40 scrollbar-track-gray-100 relative">
                 <div className="w-full min-w-0 flex flex-row flex-nowrap gap-x-2 sm:gap-x-4">
-                  {/* Summary Stats with Icons */}
+                {/* Summary Stats with Icons */}
                   <div className="flex-shrink-0 min-w-[100px] sm:min-w-[120px] md:min-w-[140px] rounded-xl p-4 font-semibold shadow bg-white/10 flex flex-col items-start border border-[#e0e0e0] gap-2">
-                    <span className="flex items-center gap-2 text-xs mb-1 opacity-80"><MdOutlineAttachMoney className="text-blue-400" /> Gaji Pokok</span>
-                    <span className="text-lg font-bold">{summary ? summary.gaji.toLocaleString('id-ID') : '-'}</span>
-                  </div>
+                  <span className="flex items-center gap-2 text-xs mb-1 opacity-80"><MdOutlineAttachMoney className="text-blue-400" /> Gaji Pokok</span>
+                  <span className="text-lg font-bold">{summary ? summary.gaji.toLocaleString('id-ID') : '-'}</span>
+                </div>
                   <div className="flex-shrink-0 min-w-[100px] sm:min-w-[120px] md:min-w-[140px] rounded-xl p-4 font-semibold shadow bg-white/10 flex flex-col items-start border border-[#e0e0e0] gap-2">
-                    <span className="flex items-center gap-2 text-xs mb-1 opacity-80"><MdOutlineCardGiftcard className="text-green-400" /> Tunjangan</span>
-                    <span className="text-lg font-bold">{summary ? summary.tunjangan.toLocaleString('id-ID') : '-'}</span>
-                  </div>
+                  <span className="flex items-center gap-2 text-xs mb-1 opacity-80"><MdOutlineCardGiftcard className="text-green-400" /> Tunjangan</span>
+                  <span className="text-lg font-bold">{summary ? summary.tunjangan.toLocaleString('id-ID') : '-'}</span>
+                </div>
                   <div className="flex-shrink-0 min-w-[100px] sm:min-w-[120px] md:min-w-[140px] rounded-xl p-4 font-semibold shadow bg-white/10 flex flex-col items-start border border-[#e0e0e0] gap-2">
-                    <span className="flex items-center gap-2 text-xs mb-1 opacity-80"><MdOutlineRemoveCircleOutline className="text-red-400" /> Potongan</span>
-                    <span className="text-lg font-bold">{summary ? summary.potongan.toLocaleString('id-ID') : '-'}</span>
-                  </div>
+                  <span className="flex items-center gap-2 text-xs mb-1 opacity-80"><MdOutlineRemoveCircleOutline className="text-red-400" /> Potongan</span>
+                  <span className="text-lg font-bold">{summary ? summary.potongan.toLocaleString('id-ID') : '-'}</span>
+                </div>
                   <div className="flex-shrink-0 min-w-[100px] sm:min-w-[120px] md:min-w-[140px] rounded-xl p-4 font-semibold shadow bg-white/10 flex flex-col items-start border border-[#e0e0e0] gap-2">
-                    <span className="flex items-center gap-2 text-xs mb-1 opacity-80"><MdOutlineMosque className="text-purple-400" /> Zakat</span>
-                    <span className="text-lg font-bold">{summary ? summary.zakat.toLocaleString('id-ID') : '-'}</span>
-                  </div>
+                  <span className="flex items-center gap-2 text-xs mb-1 opacity-80"><MdOutlineMosque className="text-purple-400" /> Zakat</span>
+                  <span className="text-lg font-bold">{summary ? summary.zakat.toLocaleString('id-ID') : '-'}</span>
+                </div>
                   <div className="flex-shrink-0 min-w-[100px] sm:min-w-[120px] md:min-w-[140px] rounded-xl p-4 font-semibold shadow bg-white/10 flex flex-col items-start border border-[#e0e0e0] gap-2">
-                    <span className="flex items-center gap-2 text-xs mb-1 opacity-80"><MdOutlineSavings className="text-[#00C570]" /> Gaji Bersih</span>
-                    <span className="text-lg font-bold">{summary ? summary.bersih.toLocaleString('id-ID') : '-'}</span>
+                  <span className="flex items-center gap-2 text-xs mb-1 opacity-80"><MdOutlineSavings className="text-[#00C570]" /> Gaji Bersih</span>
+                  <span className="text-lg font-bold">{summary ? summary.bersih.toLocaleString('id-ID') : '-'}</span>
                   </div>
                 </div>
               </div>
@@ -288,7 +288,7 @@ export default function HRKeuanganDashboard() {
                       ))}
                     </ul>
                   )}
-                </div>
+              </div>
               )}
             </div>
           </div>
@@ -296,39 +296,39 @@ export default function HRKeuanganDashboard() {
           <div className="flex flex-col md:flex-row w-full mt-4 md:mt-8">
             {/* Tasks and Recent Activity side by side */}
             <div className="flex flex-col md:flex-row gap-3 md:gap-6 w-full mt-4 md:mt-8">
-              {/* Tasks */}
+            {/* Tasks */}
               <div className="flex-1 w-full bg-white/90 backdrop-blur-lg rounded-2xl shadow-2xl p-3 sm:p-6 md:p-9 flex flex-col gap-3 sm:gap-4 border border-[#e0e0e0] relative overflow-hidden min-h-[260px] mb-3 md:mb-0">
-                {/* ZAFRA watermark logo */}
-                <Image src="/zafra.svg" alt="ZAFRA" width={56} height={56} className="absolute bottom-2 right-2 opacity-10 pointer-events-none select-none" />
-                <div className="flex items-center justify-between mb-2">
-                  <span className="font-bold text-lg flex items-center gap-2"><FiClipboard className="text-[#00C570]" />Tugas HR</span>
-                  <span className="text-xs text-[#00C570] cursor-pointer hover:underline flex items-center gap-1">Lihat semua <FiChevronRight /></span>
-                </div>
-                <div className="flex-1 overflow-y-auto pr-1">
-                  {allTasks.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center h-32 text-gray-400 gap-2">
-                      <FiClipboard className="text-3xl" />
-                      <span className="text-sm">Belum ada tugas</span>
-                    </div>
-                  ) : (
-                    <ul className="flex flex-col gap-3">
-                      {allTasks.map((item, i) => (
-                        <li key={item.title + item.date + i} className={`flex items-center gap-3 p-3 rounded-xl bg-white/80 shadow-sm hover:shadow-md transition-all duration-200 group border-l-4 ${i === 0 ? 'border-[#00C570]' : 'border-gray-200'}`}> 
-                          <span className={`inline-flex items-center justify-center w-8 h-8 rounded-full ${i === 0 ? 'bg-[#00C570]' : 'bg-gray-300'} text-white text-lg font-bold transition-all duration-300`}>
-                            <FiCheckCircle className={i === 0 ? 'animate-pulse' : 'text-[#00C570]'} />
-                          </span>
-                          <div className="flex-1">
-                            <span className="block font-semibold text-gray-800 group-hover:text-[#00C570] transition-colors duration-200">{item.title}</span>
-                            <span className="block text-xs text-gray-500">{item.date}{item.time ? `, ${item.time}` : ''}</span>
-                          </div>
-                          <button className="text-gray-400 hover:text-[#00C570] p-1 rounded" title="Edit"><FiEdit2 /></button>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
-                {/* Add Task Button (sticky) */}
-                <button onClick={() => setShowTaskModal(true)} className="mt-2 self-end bg-[#00C570] hover:bg-green-600 text-white font-semibold px-4 py-2 rounded-lg text-sm shadow focus:outline-none focus:ring-2 focus:ring-[#00C570] transition-all duration-200 flex items-center gap-1 sticky bottom-0"><FiPlus /> Tambah Tugas</button>
+              {/* ZAFRA watermark logo */}
+              <Image src="/zafra.svg" alt="ZAFRA" width={56} height={56} className="absolute bottom-2 right-2 opacity-10 pointer-events-none select-none" />
+              <div className="flex items-center justify-between mb-2">
+                <span className="font-bold text-lg flex items-center gap-2"><FiClipboard className="text-[#00C570]" />Tugas HR</span>
+                <span className="text-xs text-[#00C570] cursor-pointer hover:underline flex items-center gap-1">Lihat semua <FiChevronRight /></span>
+              </div>
+              <div className="flex-1 overflow-y-auto pr-1">
+                {allTasks.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center h-32 text-gray-400 gap-2">
+                    <FiClipboard className="text-3xl" />
+                    <span className="text-sm">Belum ada tugas</span>
+                  </div>
+                ) : (
+                  <ul className="flex flex-col gap-3">
+                    {allTasks.map((item, i) => (
+                      <li key={item.title + item.date + i} className={`flex items-center gap-3 p-3 rounded-xl bg-white/80 shadow-sm hover:shadow-md transition-all duration-200 group border-l-4 ${i === 0 ? 'border-[#00C570]' : 'border-gray-200'}`}> 
+                        <span className={`inline-flex items-center justify-center w-8 h-8 rounded-full ${i === 0 ? 'bg-[#00C570]' : 'bg-gray-300'} text-white text-lg font-bold transition-all duration-300`}>
+                          <FiCheckCircle className={i === 0 ? 'animate-pulse' : 'text-[#00C570]'} />
+                        </span>
+                        <div className="flex-1">
+                          <span className="block font-semibold text-gray-800 group-hover:text-[#00C570] transition-colors duration-200">{item.title}</span>
+                          <span className="block text-xs text-gray-500">{item.date}{item.time ? `, ${item.time}` : ''}</span>
+                        </div>
+                        <button className="text-gray-400 hover:text-[#00C570] p-1 rounded" title="Edit"><FiEdit2 /></button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+              {/* Add Task Button (sticky) */}
+              <button onClick={() => setShowTaskModal(true)} className="mt-2 self-end bg-[#00C570] hover:bg-green-600 text-white font-semibold px-4 py-2 rounded-lg text-sm shadow focus:outline-none focus:ring-2 focus:ring-[#00C570] transition-all duration-200 flex items-center gap-1 sticky bottom-0"><FiPlus /> Tambah Tugas</button>
               </div>
               {/* Recent Activity Feed */}
               <div className="flex-1 w-full bg-white rounded-2xl shadow-2xl p-3 sm:p-6 flex flex-col gap-3 sm:gap-4 border border-[#e0e0e0] min-h-[260px] mt-3 md:mt-0">
@@ -360,7 +360,7 @@ export default function HRKeuanganDashboard() {
           </div>
         </section>
       </main>
-      {showTaskModal && (
+              {showTaskModal && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 animate-fadeIn">
           <div className="bg-white rounded-2xl p-8 w-full max-w-md mx-4 relative shadow-2xl">
             <button className="absolute top-4 right-4 text-gray-400 hover:text-gray-700 text-2xl" onClick={() => setShowTaskModal(false)} aria-label="Tutup">
@@ -368,8 +368,8 @@ export default function HRKeuanganDashboard() {
             </button>
             <h2 className="text-2xl font-bold mb-6 flex items-center gap-2 justify-center"><FiClipboard className="text-[#00C570]" />Tambah Tugas HR</h2>
             <form onSubmit={async e => {
-              e.preventDefault();
-              if (!newTask.title) return;
+                      e.preventDefault();
+                      if (!newTask.title) return;
               if (!userData || !userData.uid) {
                 alert('User data not loaded. Please wait.');
                 return;
@@ -382,21 +382,21 @@ export default function HRKeuanganDashboard() {
               });
               const updatedTasks = await fetchTasks(userData.uid);
               setTasks(updatedTasks);
-              setNewTask({ title: '', date: '', time: '' });
-              setShowTaskModal(false);
-            }} className="flex flex-col gap-4">
-              <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">Judul Tugas</label>
-                <input type="text" className="w-full px-3 py-2 border rounded-xl" value={newTask.title} onChange={e => setNewTask(nt => ({ ...nt, title: e.target.value }))} required />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">Tanggal</label>
-                <input type="date" className="w-full px-3 py-2 border rounded-xl" value={newTask.date} onChange={e => setNewTask(nt => ({ ...nt, date: e.target.value }))} />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">Waktu (opsional)</label>
-                <input type="time" className="w-full px-3 py-2 border rounded-xl" value={newTask.time} onChange={e => setNewTask(nt => ({ ...nt, time: e.target.value }))} />
-              </div>
+                      setNewTask({ title: '', date: '', time: '' });
+                      setShowTaskModal(false);
+                    }} className="flex flex-col gap-4">
+                      <div>
+                        <label className="block text-xs font-medium text-gray-600 mb-1">Judul Tugas</label>
+                        <input type="text" className="w-full px-3 py-2 border rounded-xl" value={newTask.title} onChange={e => setNewTask(nt => ({ ...nt, title: e.target.value }))} required />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-gray-600 mb-1">Tanggal</label>
+                        <input type="date" className="w-full px-3 py-2 border rounded-xl" value={newTask.date} onChange={e => setNewTask(nt => ({ ...nt, date: e.target.value }))} />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-gray-600 mb-1">Waktu (opsional)</label>
+                        <input type="time" className="w-full px-3 py-2 border rounded-xl" value={newTask.time} onChange={e => setNewTask(nt => ({ ...nt, time: e.target.value }))} />
+                      </div>
               <button
                 type="submit"
                 disabled={!userData || !userData.uid || !newTask.title.trim()}
@@ -404,10 +404,10 @@ export default function HRKeuanganDashboard() {
               >
                 <FiPlus /> Tambah
               </button>
-            </form>
-          </div>
-        </div>
-      )}
+                    </form>
+                  </div>
+                </div>
+              )}
       <style jsx global>{`
 @keyframes fadeIn {
   from { opacity: 0; transform: scale(0.96); }
@@ -458,4 +458,4 @@ function formatActivityTime(ts: any) {
   if (diff < 60) return `${diff} menit lalu`;
   if (diff < 1440) return `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
   return `${date.getDate()} ${date.toLocaleString('id-ID', { month: 'short' })}`;
-}
+  }

@@ -230,3 +230,18 @@ export async function getAllPayrollUsersWithProfile(month: string) {
     return { success: false, error };
   }
 } 
+
+export async function getAllPayrolls() {
+  try {
+    const payrollsRef = collection(db, "payrolls");
+    const querySnapshot = await getDocs(payrollsRef);
+    const payrolls: PayrollData[] = [];
+    querySnapshot.forEach((doc) => {
+      payrolls.push({ id: doc.id, ...doc.data() } as PayrollData);
+    });
+    return { success: true, data: payrolls };
+  } catch (error) {
+    console.error("Error fetching all payrolls:", error);
+    return { success: false, error };
+  }
+} 

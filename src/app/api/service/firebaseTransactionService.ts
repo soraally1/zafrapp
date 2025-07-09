@@ -24,3 +24,13 @@ export async function addTransaction(data: Transaction) {
         return { success: false, error: error.message };
     }
 }
+
+export async function getAllTransactions() {
+    try {
+        const snapshot = await firestore.collection('transactionReports').get();
+        return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    } catch (error) {
+        console.error('Error fetching transactions:', error);
+        return [];
+    }
+}

@@ -2,31 +2,42 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Rules for the 'users' collection
-    match /users/{userId} {
-      // Allow any authenticated user to read/list to prevent UI bugs.
-      allow get, list: if request.auth != null;
-
-      // A user can UPDATE their own document.
-      allow update: if request.auth.uid == userId;
-
-      // Any authenticated user can CREATE a user document (for registration).
-      allow create: if request.auth != null;
+    // General read rule for all collections
+    match /{collection}/{docId} {
+      allow read: if request.auth != null;
     }
 
-    // Rules for the 'transactionReports' collection
+    // Users collection
+    match /users/{userId} {
+      allow get, list: if request.auth != null;
+      // A user can update their own document.
+      allow update: if request.auth.uid == userId;
+      // Any authenticated user can CREATE a user document (for registration).
+      allow create: if request.auth != null;
+      // HR-Keuangan can delete or update any user
+      allow delete, update: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'hr-keuangan';
+    }
+
+    // Payrolls collection (consolidated)
+    match /payrolls/{payrollId} {
+      // HR-Keuangan can read all payrolls
+      allow get, list, read: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'hr-keuangan';
+      // Authenticated users can read their own payroll
+      allow get, list, read: if request.auth != null && resource.data.userId == request.auth.uid;
+      // HR-Keuangan can create/update/delete payrolls
+      allow create, update, delete: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'hr-keuangan';
+    }
+
+    // Transaction reports
     match /transactionReports/{reportId} {
       // ONLY 'umkm-amil' can create transactions.
       allow create: if request.auth != null 
                     && exists(/databases/$(database)/documents/users/$(request.auth.uid))
                     && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'umkm-amil';
-      
       // Any authenticated user can read reports.
       allow read: if request.auth != null;
-      
       // HR-Keuangan can delete reports.
       allow delete: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'hr-keuangan';
-
       // Allow updates based on role.
       allow update: if
         // HR-Keuangan can update any field.
@@ -36,6 +47,37 @@ service cloud.firestore {
          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'umkm-amil' &&
          request.auth.uid == resource.data.userId &&
          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['shariaStatus', 'aiStatus', 'aiExplanation']));
+    }
+
+    // Activities collection
+    match /activities/{activityId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null;
+      allow update, delete: if false;
+    }
+
+    // Tasks collection
+    match /tasks/{taskId} {
+      allow create, read: if request.auth != null;
+      allow update, delete: if false;
+    }
+
+    // Stats collection
+    match /stats/{statId} {
+      allow read: if request.auth != null;
+      allow write: if false;
+    }
+
+    // Upcoming collection
+    match /upcoming/{upcomingId} {
+      allow read: if request.auth != null;
+      allow write: if false;
+    }
+
+    // Reports collection
+    match /reports/{reportId} {
+      allow read: if request.auth != null;
+      allow write: if false;
     }
   }
 }

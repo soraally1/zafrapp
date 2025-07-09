@@ -3,17 +3,15 @@ import { NextResponse } from "next/server";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
 
-// Enable the Google Search tool
-
 export async function POST(request: Request) {
   try {
     const { history, transactionDetails } = await request.json();
 
     if (!history || history.length === 0) {
-      return NextResponse.json({ message: "Conversation history is required." }, { status: 400 });
+      return NextResponse.json({ error: "Conversation history is required." }, { status: 400 });
     }
     if (!transactionDetails) {
-      return NextResponse.json({ message: "Transaction details are required." }, { status: 400 });
+      return NextResponse.json({ error: "Transaction details are required." }, { status: 400 });
     }
 
     const systemInstruction = `
@@ -44,12 +42,18 @@ export async function POST(request: Request) {
     `;
 
     const model = genAI.getGenerativeModel({
-      model: "gemini-2.5flash",
+      model: "gemini-2.5-flash",
       systemInstruction,
     });
 
+    // Sanitize history so the first message is from the user
+    let chatHistory = history.slice(0, -1);
+    while (chatHistory.length > 0 && chatHistory[0].role !== 'user') {
+      chatHistory.shift();
+    }
+
     const chat = model.startChat({
-      history: history.slice(0, -1), // Pass all but the last message as history
+      history: chatHistory,
     });
 
     const lastMessage = history[history.length - 1].parts[0].text;
@@ -59,9 +63,8 @@ export async function POST(request: Request) {
     const text = response.text();
 
     return NextResponse.json({ text });
-
   } catch (error) {
     console.error("AI Verification Error:", error);
-    return NextResponse.json({ message: "Error during AI verification." }, { status: 500 });
+    return NextResponse.json({ error: "Error during AI verification." }, { status: 500 });
   }
 }

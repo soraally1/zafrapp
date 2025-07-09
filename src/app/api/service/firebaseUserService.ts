@@ -117,3 +117,8 @@ export async function createUser({ name, email, password, role }: { name: string
     return { success: false, error: err?.message || "Failed to create user" };
   }
 }
+
+// Helper to check if user is karyawan
+export function isKaryawan(user: { role?: string }) {
+  return user.role === 'karyawan';
+}

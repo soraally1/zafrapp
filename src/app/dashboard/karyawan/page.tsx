@@ -2,17 +2,13 @@
 
 import { useState, useRef, useEffect } from "react"
 import {
-  Bell,
   CalendarIcon,
   DollarSign,
   Home,
-  LogOut,
 
   Settings,
   TrendingUp,
-  User,
   Wallet,
-  X,
   ChevronLeft,
   ChevronRight,
   FileText,
@@ -20,9 +16,13 @@ import {
   Gift,
   Shield,
 } from "lucide-react"
-import Image from "next/image"
 import Sidebar from "../../components/Sidebar"
 import type React from "react"
+import Topbar from "../../components/Topbar";
+import { getAuth, onAuthStateChanged } from "firebase/auth";
+import { getUserProfile } from "@/app/api/service/userProfileService";
+import { getUserPayroll } from "@/app/api/service/payrollService";
+import { useRouter } from "next/navigation";
 
 // Updated Button Component with modern styling
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
@@ -319,21 +319,80 @@ function Calendar({ selectedDate, onDateSelect }: CalendarProps) {
 export default function KaryawanDashboard() {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date())
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [userName, setUserName] = useState("");
+  const [userRole, setUserRole] = useState("");
+  const [userPhoto, setUserPhoto] = useState<string | undefined>(undefined);
+  const [loadingUser, setLoadingUser] = useState(true);
+  const [payroll, setPayroll] = useState<any>(null);
+  const [payrollLoading, setPayrollLoading] = useState(true);
+  const [payrollError, setPayrollError] = useState("");
+  const router = useRouter();
 
-  // Sample data
-  const salaryData = {
-    currentMonth: 8500000,
-    lastMonth: 8200000,
-    yearToDate: 95000000,
-    bonus: 1500000,
+  useEffect(() => {
+    const auth = getAuth();
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (user && user.uid) {
+        try {
+          const profile = await getUserProfile(user.uid);
+          setUserName(profile?.name || "");
+          setUserRole(profile?.role || "");
+          setUserPhoto(profile?.photo);
+        } catch {
+          setUserName("");
+          setUserRole("");
+          setUserPhoto(undefined);
+        }
+      } else {
+        setUserName("");
+        setUserRole("");
+        setUserPhoto(undefined);
+      }
+      setLoadingUser(false);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    if (!userName || !userRole || loadingUser) return;
+    // Get current month in YYYY-MM
+    const now = new Date();
+    const month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+    // Get userId from auth
+    const auth = getAuth();
+    const user = auth.currentUser;
+    if (!user) return;
+    setPayrollLoading(true);
+    getUserPayroll(user.uid, month)
+      .then(res => {
+        if (res.success) {
+          setPayroll(res.data);
+        } else {
+          setPayrollError("Gagal mengambil data payroll");
+        }
+      })
+      .catch(() => setPayrollError("Gagal mengambil data payroll"))
+      .finally(() => setPayrollLoading(false));
+  }, [userName, userRole, loadingUser]);
+
+  useEffect(() => {
+    if (!loadingUser && userRole && userRole !== "karyawan") {
+      router.push("/login");
+    }
+  }, [loadingUser, userRole, router]);
+
+  if (loadingUser || (!userRole && !payrollLoading)) {
+    return null; // or a spinner
   }
 
-  const zakatData = {
-    nisab: 85000000,
-    currentSavings: 120000000,
-    zakatAmount: 3000000,
-    zakatDue: true,
-  }
+  // Remove sample salaryData and zakatData
+  // In the JSX, replace salaryData and zakatData usages with payroll fields, e.g.:
+  // salaryData.currentMonth -> payroll?.netSalary
+  // salaryData.yearToDate -> payroll?.netSalary * (now.getMonth() + 1) (if you want a simple YTD sum)
+  // salaryData.bonus -> payroll?.allowances?.other
+  // zakatData.zakatAmount -> payroll?.zakat
+  // zakatData.nisab, zakatData.currentSavings: you may need to fetch or calculate separately, or use placeholders
+  // zakatData.zakatDue: payroll?.zakat > 0
+  // Fallback to 0 or placeholders if payroll is null or loading
 
   const events = [
     { date: "2024-01-15", title: "Meeting Tim", type: "meeting" },
@@ -357,79 +416,10 @@ export default function KaryawanDashboard() {
 
       {/* Main content */}
       <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Header - Modern redesign */}
-        <header className="bg-white shadow-xs border-b border-gray-100">
-          <div className="flex items-center justify-between h-16 px-6">
-            <div className="flex items-center space-x-4">
-              <div>
-                <h1 className="text-lg font-semibold text-gray-900">Dashboard Karyawan</h1>
-                <p className="text-xs text-gray-500">Selamat datang kembali, Ahmad Rizki</p>
-              </div>
-            </div>
-
-            <div className="flex items-center space-x-3">
-              <div className="relative">
-                <Button variant="ghost" size="icon">
-                  <Bell className="h-5 w-5 text-gray-500" />
-                </Button>
-                <Badge className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs">
-                  3
-                </Badge>
-              </div>
-
-              <Dropdown
-                align="right"
-                trigger={
-                  <Button variant="ghost" className="relative h-8 w-8 rounded-full p-0">
-                    <Image
-                      src="/placeholder.svg?height=32&width=32"
-                      alt="Profile"
-                      width={32}
-                      height={32}
-                      className="rounded-full border border-gray-200"
-                    />
-                  </Button>
-                }
-              >
-                <div className="px-4 py-3 border-b border-gray-100">
-                  <p className="font-medium text-sm">Ahmad Rizki</p>
-                  <p className="text-xs text-gray-500">ahmad.rizki@company.com</p>
-                </div>
-                <DropdownItem>
-                  <User className="mr-2 h-4 w-4" />
-                  Profil
-                </DropdownItem>
-                <DropdownItem>
-                  <Settings className="mr-2 h-4 w-4" />
-                  Pengaturan
-                </DropdownItem>
-                <div className="border-t border-gray-100 my-1"></div>
-                <DropdownItem className="text-red-600">
-                  <LogOut className="mr-2 h-4 w-4" />
-                  Keluar
-                </DropdownItem>
-              </Dropdown>
-            </div>
-          </div>
-        </header>
-
+        {/* Topbar */}
+        <Topbar userName={userName} userRole={userRole} userPhoto={userPhoto} loading={loadingUser} />
         {/* Dashboard content */}
         <main className="flex-1 overflow-y-auto p-6">
-          {/* Greeting and quick actions */}
-          <div className="mb-6 flex justify-between items-center">
-            <div>
-              <h2 className="text-xl font-semibold text-gray-900 mb-2">Halo, Ahmad Rizki!</h2>
-              <p className="text-gray-500 text-sm">Berikut ringkasan informasi gaji dan keuangan Anda.</p>
-            </div>
-            <div className="flex space-x-2">
-              <Button variant="secondary" className="shadow-sm">
-                <FileText className="mr-2 h-4 w-4" /> Lihat Slip Gaji
-              </Button>
-              <Button variant="primary" className="shadow-sm">
-                <DollarSign className="mr-2 h-4 w-4" /> Ajukan Pinjaman
-              </Button>
-            </div>
-          </div>
 
           {/* Salary overview cards - Modern grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
@@ -439,7 +429,7 @@ export default function KaryawanDashboard() {
                 <DollarSign className="h-4 w-4 text-indigo-500" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-gray-900">Rp {salaryData.currentMonth.toLocaleString("id-ID")}</div>
+                <div className="text-2xl font-bold text-gray-900">Rp {payroll?.netSalary?.toLocaleString("id-ID") || "0"}</div>
                 <p className="text-xs text-gray-500 mt-1">+3.7% dari bulan lalu</p>
               </CardContent>
             </Card>
@@ -450,7 +440,7 @@ export default function KaryawanDashboard() {
                 <TrendingUp className="h-4 w-4 text-gray-500" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-gray-900">Rp {salaryData.yearToDate.toLocaleString("id-ID")}</div>
+                <div className="text-2xl font-bold text-gray-900">Rp {payroll?.netSalary * (new Date().getMonth() + 1) || "0"}</div>
                 <p className="text-xs text-gray-500 mt-1">11 bulan kerja</p>
               </CardContent>
             </Card>
@@ -461,7 +451,7 @@ export default function KaryawanDashboard() {
                 <Gift className="h-4 w-4 text-gray-500" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-gray-900">Rp {salaryData.bonus.toLocaleString("id-ID")}</div>
+                <div className="text-2xl font-bold text-gray-900">Rp {payroll?.allowances?.other || "0"}</div>
                 <p className="text-xs text-gray-500 mt-1">Bonus kinerja Q4</p>
               </CardContent>
             </Card>
@@ -472,9 +462,9 @@ export default function KaryawanDashboard() {
                 <Shield className="h-4 w-4 text-gray-500" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-gray-900">Rp {zakatData.zakatAmount.toLocaleString("id-ID")}</div>
-                <Badge variant={zakatData.zakatDue ? "destructive" : "secondary"} className="mt-1">
-                  {zakatData.zakatDue ? "Wajib Zakat" : "Belum Wajib"}
+                <div className="text-2xl font-bold text-gray-900">Rp {payroll?.zakat || "0"}</div>
+                <Badge variant={payroll?.zakat > 0 ? "destructive" : "secondary"} className="mt-1">
+                  {payroll?.zakat > 0 ? "Wajib Zakat" : "Belum Wajib"}
                 </Badge>
               </CardContent>
             </Card>
@@ -495,15 +485,15 @@ export default function KaryawanDashboard() {
                       <div className="space-y-2">
                         <div className="flex justify-between items-center text-sm">
                           <span className="text-gray-600">Gaji Pokok</span>
-                          <span className="font-medium">Rp 6.500.000</span>
+                          <span className="font-medium">Rp {payroll?.basicSalary || "0"}</span>
                         </div>
                         <div className="flex justify-between items-center text-sm">
                           <span className="text-gray-600">Tunjangan Jabatan</span>
-                          <span className="font-medium">Rp 1.500.000</span>
+                          <span className="font-medium">Rp {payroll?.allowances?.positionAllowance || "0"}</span>
                         </div>
                         <div className="flex justify-between items-center text-sm">
                           <span className="text-gray-600">Tunjangan Transport</span>
-                          <span className="font-medium">Rp 500.000</span>
+                          <span className="font-medium">Rp {payroll?.allowances?.transportAllowance || "0"}</span>
                         </div>
                       </div>
                     </div>
@@ -511,7 +501,7 @@ export default function KaryawanDashboard() {
                     <div className="border-t border-gray-100 pt-3">
                       <div className="flex justify-between items-center text-sm font-medium">
                         <span>Total Pendapatan</span>
-                        <span>Rp 8.500.000</span>
+                        <span>Rp {payroll?.totalEarnings || "0"}</span>
                       </div>
                     </div>
 
@@ -520,15 +510,15 @@ export default function KaryawanDashboard() {
                       <div className="space-y-2">
                         <div className="flex justify-between items-center text-sm">
                           <span className="text-gray-600">BPJS Kesehatan</span>
-                          <span className="text-red-600 font-medium">-Rp 85.000</span>
+                          <span className="text-red-600 font-medium">-Rp {payroll?.deductions?.healthInsurance || "0"}</span>
                         </div>
                         <div className="flex justify-between items-center text-sm">
                           <span className="text-gray-600">BPJS Ketenagakerjaan</span>
-                          <span className="text-red-600 font-medium">-Rp 170.000</span>
+                          <span className="text-red-600 font-medium">-Rp {payroll?.deductions?.employmentInsurance || "0"}</span>
                         </div>
                         <div className="flex justify-between items-center text-sm">
                           <span className="text-gray-600">PPh 21</span>
-                          <span className="text-red-600 font-medium">-Rp 425.000</span>
+                          <span className="text-red-600 font-medium">-Rp {payroll?.deductions?.incomeTax || "0"}</span>
                         </div>
                       </div>
                     </div>
@@ -536,7 +526,7 @@ export default function KaryawanDashboard() {
                     <div className="border-t border-gray-100 pt-3">
                       <div className="flex justify-between items-center">
                         <span className="text-sm font-medium text-gray-900">Take Home Pay</span>
-                        <span className="text-lg font-bold text-green-600">Rp 7.820.000</span>
+                        <span className="text-lg font-bold text-green-600">Rp {payroll?.netSalary || "0"}</span>
                       </div>
                     </div>
                   </div>
@@ -554,35 +544,35 @@ export default function KaryawanDashboard() {
                     <div className="space-y-2">
                       <div className="flex justify-between items-center text-sm">
                         <span className="text-gray-600">Nisab (85 gram emas)</span>
-                        <span className="font-medium">Rp {zakatData.nisab.toLocaleString("id-ID")}</span>
+                        <span className="font-medium">Rp {payroll?.nisab || "0"}</span>
                       </div>
                       <div className="flex justify-between items-center text-sm">
                         <span className="text-gray-600">Total Tabungan</span>
-                        <span className="font-medium">Rp {zakatData.currentSavings.toLocaleString("id-ID")}</span>
+                        <span className="font-medium">Rp {payroll?.totalSavings || "0"}</span>
                       </div>
                     </div>
 
                     <div className="space-y-2">
                       <div className="flex justify-between text-xs text-gray-500 mb-1">
                         <span>Progress ke Nisab</span>
-                        <span>{Math.round((zakatData.currentSavings / zakatData.nisab) * 100)}%</span>
+                        <span>{Math.round((payroll?.totalSavings / payroll?.nisab) * 100) || "0"}%</span>
                       </div>
-                      <Progress value={(zakatData.currentSavings / zakatData.nisab) * 100} />
+                      <Progress value={(payroll?.totalSavings / payroll?.nisab) * 100 || 0} />
                     </div>
 
                     <div className="border-t border-gray-100 pt-3">
                       <div className="flex justify-between items-center text-sm font-medium">
                         <span>Zakat Wajib (2.5%)</span>
-                        <span className="text-green-600">Rp {zakatData.zakatAmount.toLocaleString("id-ID")}</span>
+                        <span className="text-green-600">Rp {payroll?.zakat || "0"}</span>
                       </div>
                     </div>
 
                     <Button 
                       className="w-full" 
-                      variant={zakatData.zakatDue ? "primary" : "secondary"}
+                      variant={payroll?.zakat > 0 ? "primary" : "secondary"}
                       size="lg"
                     >
-                      {zakatData.zakatDue ? "Bayar Zakat Sekarang" : "Belum Wajib Zakat"}
+                      {payroll?.zakat > 0 ? "Bayar Zakat Sekarang" : "Belum Wajib Zakat"}
                     </Button>
                   </div>
                 </CardContent>
@@ -633,21 +623,21 @@ export default function KaryawanDashboard() {
                   <div className="space-y-3">
                     <div className="flex justify-between items-center text-sm">
                       <span className="text-gray-600">Gaji Rata-rata</span>
-                      <span className="font-medium">Rp 8.200.000</span>
+                      <span className="font-medium">Rp {payroll?.netSalary || "0"}</span>
                     </div>
                     <div className="flex justify-between items-center text-sm">
                       <span className="text-gray-600">Total Bonus 2024</span>
-                      <span className="font-medium">Rp 4.500.000</span>
+                      <span className="font-medium">Rp {payroll?.allowances?.other || "0"}</span>
                     </div>
                     <div className="flex justify-between items-center text-sm">
                       <span className="text-gray-600">Zakat Terbayar</span>
-                      <span className="font-medium">Rp 2.100.000</span>
+                      <span className="font-medium">Rp {payroll?.zakat || "0"}</span>
                     </div>
                   </div>
                   <div className="border-t border-gray-100 pt-3">
                     <div className="flex justify-between items-center">
                       <span className="text-sm font-medium text-gray-900">Proyeksi Tahun Ini</span>
-                      <span className="text-lg font-bold text-indigo-600">Rp 105.000.000</span>
+                      <span className="text-lg font-bold text-indigo-600">Rp {payroll?.netSalary * 12 || "0"}</span>
                     </div>
                   </div>
                 </CardContent>

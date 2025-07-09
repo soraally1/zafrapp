@@ -73,7 +73,7 @@ export default function EmployeeManagement() {
         setUserData({ ...profile, uid: user.uid }); // Ensure uid is always present
         setLoadingUser(false);
       } else {
-        setLoadingUser(false);
+      setLoadingUser(false);
       }
     });
     return () => unsubscribe();
