@@ -15,13 +15,14 @@ import {
   PieChart,
   Gift,
   Shield,
+  CheckCircle2,
 } from "lucide-react"
 import Sidebar from "../../components/Sidebar"
 import type React from "react"
 import Topbar from "../../components/Topbar";
 import { getAuth, onAuthStateChanged } from "firebase/auth";
 import { getUserProfile } from "@/app/api/service/userProfileService";
-import { getUserPayroll } from "@/app/api/service/payrollService";
+import { getUserPayroll, markZakatPaid } from "@/app/api/service/payrollService";
 import { useRouter } from "next/navigation";
 
 // Updated Button Component with modern styling
@@ -318,15 +319,15 @@ function Calendar({ selectedDate, onDateSelect }: CalendarProps) {
 // Main Dashboard Component with modern redesign
 export default function KaryawanDashboard() {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date())
-  const [sidebarOpen, setSidebarOpen] = useState(false)
   const [userName, setUserName] = useState("");
   const [userRole, setUserRole] = useState("");
   const [userPhoto, setUserPhoto] = useState<string | undefined>(undefined);
   const [loadingUser, setLoadingUser] = useState(true);
   const [payroll, setPayroll] = useState<any>(null);
   const [payrollLoading, setPayrollLoading] = useState(true);
-  const [payrollError, setPayrollError] = useState("");
   const router = useRouter();
+  const [zakatPaymentMethod, setZakatPaymentMethod] = useState("");
+  const [zakatPaying, setZakatPaying] = useState(false);
 
   useEffect(() => {
     const auth = getAuth();
@@ -352,26 +353,31 @@ export default function KaryawanDashboard() {
     return () => unsubscribe();
   }, []);
 
+  // Add a helper to fetch payroll
+  const fetchPayroll = async (userId: string, month: string) => {
+    setPayrollLoading(true);
+    try {
+      const res = await getUserPayroll(userId, month);
+      if (res.success) {
+        setPayroll(res.data);
+      } else {
+        // Removed unused setPayrollError
+      }
+    } catch {
+      // Removed unused setPayrollError
+    } finally {
+      setPayrollLoading(false);
+    }
+  };
+
   useEffect(() => {
     if (!userName || !userRole || loadingUser) return;
-    // Get current month in YYYY-MM
     const now = new Date();
     const month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-    // Get userId from auth
     const auth = getAuth();
     const user = auth.currentUser;
     if (!user) return;
-    setPayrollLoading(true);
-    getUserPayroll(user.uid, month)
-      .then(res => {
-        if (res.success) {
-          setPayroll(res.data);
-        } else {
-          setPayrollError("Gagal mengambil data payroll");
-        }
-      })
-      .catch(() => setPayrollError("Gagal mengambil data payroll"))
-      .finally(() => setPayrollLoading(false));
+    fetchPayroll(user.uid, month);
   }, [userName, userRole, loadingUser]);
 
   useEffect(() => {
@@ -384,30 +390,54 @@ export default function KaryawanDashboard() {
     return null; // or a spinner
   }
 
-  // Remove sample salaryData and zakatData
-  // In the JSX, replace salaryData and zakatData usages with payroll fields, e.g.:
-  // salaryData.currentMonth -> payroll?.netSalary
-  // salaryData.yearToDate -> payroll?.netSalary * (now.getMonth() + 1) (if you want a simple YTD sum)
-  // salaryData.bonus -> payroll?.allowances?.other
-  // zakatData.zakatAmount -> payroll?.zakat
-  // zakatData.nisab, zakatData.currentSavings: you may need to fetch or calculate separately, or use placeholders
-  // zakatData.zakatDue: payroll?.zakat > 0
-  // Fallback to 0 or placeholders if payroll is null or loading
-
   const events = [
     { date: "2024-01-15", title: "Meeting Tim", type: "meeting" },
     { date: "2024-01-20", title: "Training", type: "training" },
     { date: "2024-01-25", title: "Gajian", type: "salary" },
   ]
 
-  const sidebarItems = [
-    { icon: Home, label: "Dashboard", active: true },
-    { icon: Wallet, label: "Gaji & Tunjangan" },
-    { icon: FileText, label: "Slip Gaji" },
-    { icon: CalendarIcon, label: "Kalender" },
-    { icon: PieChart, label: "Laporan" },
-    { icon: Settings, label: "Pengaturan" },
-  ]
+  // Handler to mark zakat as paid
+  const handleMarkZakatPaid = async () => {
+    if (!payroll?.id) return;
+    // Removed unused setZakatUpdating
+    try {
+      const auth = getAuth();
+      const user = auth.currentUser;
+      if (!user) return;
+      const now = new Date();
+      const month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+      const success = await markZakatPaid(payroll.id);
+      if (success) {
+        setPayroll((prev: any) => ({ ...prev, zakatPaid: true }));
+        await fetchPayroll(user.uid, month);
+      } else {
+        alert("Gagal memperbarui status zakat. Silakan coba lagi.");
+      }
+    } catch (e) {
+      alert("Terjadi kesalahan saat memperbarui status zakat.");
+    } finally {
+      // Removed unused setZakatUpdating
+    }
+  };
+
+  // Handler to simulate zakat payment
+  const handleSimulateZakatPayment = async () => {
+    setZakatPaying(true);
+    setTimeout(async () => {
+      await handleMarkZakatPaid();
+      setZakatPaying(false);
+    }, 1500); // Simulate payment processing
+  };
+ 
+  const GOLD_PRICE_PER_GRAM = 1350000; 
+  const NISAB_GRAM = 85;
+  const nisab = GOLD_PRICE_PER_GRAM * NISAB_GRAM;
+  const currentMonth = new Date().getMonth() + 1;
+  const yearToDateSavings = payroll?.netSalary ? payroll.netSalary * currentMonth : 0;
+
+  // Defensive fallback for zakatPaid
+  const zakatPaid = payroll?.zakatPaid === true;
+  const zakatDue = payroll?.zakat > 0 && !zakatPaid;
 
   return (
     <div className="min-h-screen flex bg-gray-50">
@@ -541,39 +571,61 @@ export default function KaryawanDashboard() {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="space-y-4">
-                    <div className="space-y-2">
-                      <div className="flex justify-between items-center text-sm">
-                        <span className="text-gray-600">Nisab (85 gram emas)</span>
-                        <span className="font-medium">Rp {payroll?.nisab || "0"}</span>
+                    {/* Step 1: Calculation */}
+                    <div className="flex items-center gap-3 mb-2">
+                      <div className={`w-6 h-6 rounded-full flex items-center justify-center font-bold text-xs ${zakatPaid ? 'bg-green-500 text-white' : 'bg-indigo-500 text-white'}`}>1</div>
+                      <div className="flex-1">
+                        <span className="font-semibold">Perhitungan Zakat</span>
+                        <span className="block text-xs text-gray-500">(Otomatis dari gaji & tabungan)</span>
                       </div>
-                      <div className="flex justify-between items-center text-sm">
-                        <span className="text-gray-600">Total Tabungan</span>
-                        <span className="font-medium">Rp {payroll?.totalSavings || "0"}</span>
-                      </div>
+                      <span className="text-xs font-semibold text-indigo-600">{payroll?.zakat?.toLocaleString("id-ID") || 0} IDR</span>
                     </div>
-
-                    <div className="space-y-2">
-                      <div className="flex justify-between text-xs text-gray-500 mb-1">
-                        <span>Progress ke Nisab</span>
-                        <span>{Math.round((payroll?.totalSavings / payroll?.nisab) * 100) || "0"}%</span>
-                      </div>
-                      <Progress value={(payroll?.totalSavings / payroll?.nisab) * 100 || 0} />
+                    <div className="bg-gray-50 rounded-lg p-3 text-xs text-gray-700 mb-2">
+                      Nisab: <b>Rp {nisab.toLocaleString("id-ID")}</b> &bull; Tabungan: <b>Rp {yearToDateSavings.toLocaleString("id-ID")}</b> &bull; Zakat: <b>Rp {payroll?.zakat?.toLocaleString("id-ID") || 0}</b>
                     </div>
-
-                    <div className="border-t border-gray-100 pt-3">
-                      <div className="flex justify-between items-center text-sm font-medium">
-                        <span>Zakat Wajib (2.5%)</span>
-                        <span className="text-green-600">Rp {payroll?.zakat || "0"}</span>
+                    {/* Step 2: Payment */}
+                    <div className="flex items-center gap-3 mb-2">
+                      <div className={`w-6 h-6 rounded-full flex items-center justify-center font-bold text-xs ${zakatPaid ? 'bg-green-500 text-white' : zakatDue ? 'bg-yellow-400 text-white' : 'bg-gray-300 text-white'}`}>2</div>
+                      <div className="flex-1">
+                        <span className="font-semibold">Pembayaran Zakat</span>
+                        <span className="block text-xs text-gray-500">{zakatPaid ? 'Selesai' : zakatDue ? 'Menunggu pembayaran' : 'Tidak wajib'}</span>
                       </div>
+                      {zakatPaid && <span className="text-xs font-semibold text-green-600">Completed</span>}
+                      {zakatDue && !zakatPaid && <span className="text-xs font-semibold text-yellow-600">Belum Dibayar</span>}
                     </div>
-
-                    <Button 
-                      className="w-full" 
-                      variant={payroll?.zakat > 0 ? "primary" : "secondary"}
-                      size="lg"
-                    >
-                      {payroll?.zakat > 0 ? "Bayar Zakat Sekarang" : "Belum Wajib Zakat"}
-                    </Button>
+                    {/* Payment Action */}
+                    {zakatDue && !zakatPaid && (
+                      <div className="bg-yellow-50 rounded-lg p-4 flex flex-col gap-2 border border-yellow-200">
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Pilih Metode Pembayaran</label>
+                        <select
+                          className="w-full px-3 py-2 border rounded-lg"
+                          value={zakatPaymentMethod}
+                          onChange={e => setZakatPaymentMethod(e.target.value)}
+                          disabled={zakatPaying}
+                        >
+                          <option value="">-- Pilih Metode --</option>
+                          <option value="bank">Bank Transfer</option>
+                          <option value="ewallet">E-Wallet</option>
+                          <option value="cash">Cash</option>
+                        </select>
+                        <Button
+                          className="w-full mt-2"
+                          variant="primary"
+                          size="lg"
+                          onClick={handleSimulateZakatPayment}
+                          disabled={!zakatPaymentMethod || zakatPaying}
+                        >
+                          {zakatPaying ? "Memproses Pembayaran..." : "Bayar Zakat Sekarang"}
+                        </Button>
+                      </div>
+                    )}
+                    {zakatPaid && (
+                      <div className="bg-green-50 rounded-lg p-4 flex items-center gap-3 border border-green-200 mt-2 animate-fadeIn">
+                        <CheckCircle2 className="text-green-500 w-6 h-6" />
+                        <span className="inline-block px-3 py-1 rounded-full text-sm font-bold bg-green-100 text-green-700">Pembayaran Zakat Selesai</span>
+                        <span className="text-sm text-green-700 font-semibold">Terima kasih telah menunaikan zakat! 🎉</span>
+                      </div>
+                    )}
                   </div>
                 </CardContent>
               </Card>
@@ -596,8 +648,8 @@ export default function KaryawanDashboard() {
                   <CardTitle>Event Mendatang</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  {events.map((event, index) => (
-                    <div key={index} className="flex items-start space-x-3 p-3 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors">
+                  {events.map((event) => (
+                    <div key={event.date + '-' + event.title} className="flex items-start space-x-3 p-3 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors">
                       <div className={`mt-1 flex-shrink-0 h-2 w-2 rounded-full ${
                         event.type === 'meeting' ? 'bg-blue-500' : 
                         event.type === 'training' ? 'bg-purple-500' : 

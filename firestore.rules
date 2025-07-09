@@ -26,6 +26,8 @@ service cloud.firestore {
       allow get, list, read: if request.auth != null && resource.data.userId == request.auth.uid;
       // HR-Keuangan can create/update/delete payrolls
       allow create, update, delete: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'hr-keuangan';
+      // Karyawan can update their own payroll (e.g., mark zakat as paid)
+      allow update: if request.auth != null && resource.data.userId == request.auth.uid;
     }
 
     // Transaction reports
