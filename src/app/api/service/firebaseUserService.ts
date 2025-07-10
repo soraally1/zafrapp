@@ -1,4 +1,4 @@
-import { registerWithEmail, loginWithEmail, saveUserToFirestore } from "@/lib/firebaseApi";
+import { registerWithEmail, loginWithEmail, saveUserToFirestore, saveMitraData } from "@/lib/firebaseApi";
 import { getFirestore, doc, getDoc, deleteDoc, updateDoc } from "firebase/firestore";
 import { collection, query, where, getDocs } from "firebase/firestore";
 
@@ -12,17 +12,25 @@ interface User {
   photo?: string;
 }
 
-export async function registerUser({ name, email, password, role }: { name: string, email: string, password: string, role: string }) {
+export async function registerUser({ name, email, password, role, namaMitra, alamatMitra, detailBisnis, jenisUsaha }: { name: string; email: string; password: string; role: string; namaMitra?: string; alamatMitra?: string; detailBisnis?: string; jenisUsaha?: string; }) {
   try {
     const userCredential = await registerWithEmail(email, password);
     const user = userCredential.user;
     if (!user?.uid) throw new Error("User UID not found after registration.");
-    await saveUserToFirestore({
-      uid: user.uid,
-      email,
-      name,
-      role,
-    });
+
+    // Save core user data
+    await saveUserToFirestore({ uid: user.uid, email, name, role });
+
+    // If the user is a Mitra, save their specific data to the 'mitra' collection
+    if (role === 'umkm-amil' && namaMitra && alamatMitra && detailBisnis && jenisUsaha) {
+      await saveMitraData({
+        uid: user.uid,
+        namaMitra,
+        alamatMitra,
+        detailBisnis,
+        jenisUsaha,
+      });
+    }
     return { success: true, uid: user.uid };
   } catch (err: any) {
     return { success: false, error: err?.message || "Register failed" };

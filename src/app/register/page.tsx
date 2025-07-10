@@ -12,11 +12,42 @@ const roles = [
   { value: "umkm-amil", label: "UMKM Syariah & Lembaga Amil Zakat" },
 ];
 
+const jenisUsahaOptions = [
+  { value: "", label: "Pilih Jenis Usaha...", disabled: true },
+  { value: "warung-makan", label: "Kuliner - Warung Makan" },
+  { value: "restoran", label: "Kuliner - Restoran" },
+  { value: "katering", label: "Kuliner - Katering" },
+  { value: "makanan-ringan", label: "Kuliner - Makanan Ringan" },
+  { value: "minuman", label: "Kuliner - Minuman" },
+  { value: "pakaian", label: "Fashion - Pakaian" },
+  { value: "aksesoris-fashion", label: "Fashion - Aksesoris" },
+  { value: "jasa-jahit", label: "Fashion - Jasa Jahit" },
+  { value: "pertanian", label: "Agribisnis - Pertanian" },
+  { value: "peternakan", label: "Agribisnis - Peternakan" },
+  { value: "perikanan", label: "Agribisnis - Perikanan" },
+  { value: "laundry", label: "Jasa - Laundry" },
+  { value: "bengkel", label: "Jasa - Bengkel" },
+  { value: "desain-grafis", label: "Jasa - Desain Grafis" },
+  { value: "jasa-kebersihan", label: "Jasa - Jasa Kebersihan" },
+  { value: "kerajinan-kayu", label: "Kerajinan - Produk Kayu" },
+  { value: "kerajinan-keramik", label: "Kerajinan - Keramik" },
+  { value: "kerajinan-rajutan", label: "Kerajinan - Rajutan" },
+  { value: "salon-barbershop", label: "Kecantikan - Salon/Barbershop" },
+  { value: "penjualan-kosmetik", label: "Kecantikan - Penjualan Kosmetik" },
+  { value: "bimbingan-belajar", label: "Pendidikan - Bimbingan Belajar" },
+  { value: "les-privat", label: "Pendidikan - Les Privat" },
+  { value: "lainnya", label: "Lainnya" },
+];
+
 export default function RegisterPage() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [role, setRole] = useState(roles[0].value);
+  const [namaMitra, setNamaMitra] = useState("");
+  const [alamatMitra, setAlamatMitra] = useState("");
+  const [detailBisnis, setDetailBisnis] = useState("");
+  const [jenisUsaha, setJenisUsaha] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const router = useRouter();
@@ -25,7 +56,19 @@ export default function RegisterPage() {
     e.preventDefault();
     setLoading(true);
     setError("");
-    const result = await registerUser({ name, email, password, role });
+
+    let userData: any = { name, email, password, role };
+    if (role === 'umkm-amil') {
+      userData = {
+        ...userData,
+        namaMitra,
+        alamatMitra,
+        detailBisnis,
+        jenisUsaha
+      };
+    }
+
+    const result = await registerUser(userData);
     if (result.success) {
       // Redirect to dashboard based on role
       if (role === "hr-keuangan") {
@@ -120,6 +163,60 @@ export default function RegisterPage() {
                 ))}
               </select>
             </label>
+            {role === 'umkm-amil' && (
+              <>
+                <label className="flex flex-col gap-1 text-left w-full">
+                  <span className="font-semibold text-gray-700">Nama Mitra</span>
+                  <input
+                    type="text"
+                    placeholder="Nama Lengkap Mitra atau Badan Usaha"
+                    value={namaMitra}
+                    onChange={(e) => setNamaMitra(e.target.value)}
+                    className="border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-2 sm:py-3 focus:outline-none focus:ring-2 focus:ring-[#00C570] dark:bg-gray-800 dark:text-white transition w-full hover:border-[#00C570] text-base sm:text-lg"
+                    required
+                    disabled={loading}
+                  />
+                </label>
+                <label className="flex flex-col gap-1 text-left w-full">
+                  <span className="font-semibold text-gray-700">Alamat Mitra</span>
+                  <input
+                    type="text"
+                    placeholder="Alamat Lengkap Mitra"
+                    value={alamatMitra}
+                    onChange={(e) => setAlamatMitra(e.target.value)}
+                    className="border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-2 sm:py-3 focus:outline-none focus:ring-2 focus:ring-[#00C570] dark:bg-gray-800 dark:text-white transition w-full hover:border-[#00C570] text-base sm:text-lg"
+                    required
+                    disabled={loading}
+                  />
+                </label>
+                <label className="flex flex-col gap-1 text-left w-full">
+                  <span className="font-semibold text-gray-700">Jenis Usaha</span>
+                  <select
+                    value={jenisUsaha}
+                    onChange={(e) => setJenisUsaha(e.target.value)}
+                    className="border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-2 sm:py-3 focus:outline-none focus:ring-2 focus:ring-[#00C570] dark:bg-gray-800 dark:text-white transition w-full hover:border-[#00C570] text-base sm:text-lg"
+                    required
+                    disabled={loading}
+                  >
+                    {jenisUsahaOptions.map((option) => (
+                      <option key={option.value} value={option.value} disabled={option.disabled}>{option.label}</option>
+                    ))}
+                  </select>
+                </label>
+                <label className="flex flex-col gap-1 text-left w-full">
+                  <span className="font-semibold text-gray-700">Detail Bisnis</span>
+                  <textarea
+                    placeholder="Jelaskan secara singkat tentang bisnis Anda"
+                    value={detailBisnis}
+                    onChange={(e) => setDetailBisnis(e.target.value)}
+                    className="border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-2 sm:py-3 focus:outline-none focus:ring-2 focus:ring-[#00C570] dark:bg-gray-800 dark:text-white transition w-full hover:border-[#00C570] text-base sm:text-lg"
+                    rows={3}
+                    required
+                    disabled={loading}
+                  />
+                </label>
+              </>
+            )}
             {error && <div className="text-red-600 text-sm font-semibold mt-1">{error}</div>}
             <button type="submit" className="bg-[#00C570] hover:bg-green-600 active:bg-green-700 text-white rounded-lg py-2 sm:py-3 font-semibold shadow transition text-base sm:text-lg" disabled={loading}>
               {loading ? "Loading..." : "Register"}

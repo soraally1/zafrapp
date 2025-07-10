@@ -30,11 +30,25 @@ export async function loginWithEmail(email: string, password: string) {
   return signInWithEmailAndPassword(auth, email, password);
 }
 
-export async function saveUserToFirestore({ uid, email, name, role }: { uid: string, email: string, name: string, role: string }) {
-  return setDoc(doc(db, "users", uid), {
+export async function saveUserToFirestore({ uid, email, name, role }: { uid: string; email: string; name: string; role: string; }) {
+  const userData = {
     email,
     name,
     role,
     createdAt: new Date().toISOString(),
-  });
+  };
+  return setDoc(doc(db, "users", uid), userData);
+}
+
+export async function saveMitraData({ uid, namaMitra, alamatMitra, detailBisnis, jenisUsaha }: { uid: string; namaMitra: string; alamatMitra: string; detailBisnis: string; jenisUsaha: string; }) {
+  const mitraData = {
+    userId: uid, // Link back to the user
+    namaMitra,
+    alamatMitra,
+    detailBisnis,
+    jenisUsaha,
+    createdAt: new Date().toISOString(),
+  };
+  // Use the user's UID as the document ID in the 'mitra' collection for easy linking
+  return setDoc(doc(db, "mitra", uid), mitraData);
 } 
