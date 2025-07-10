@@ -1,8 +1,421 @@
 "use client";
 import { useState, useEffect, useMemo, Fragment } from "react";
-import { db } from "@/lib/firebaseApi";
-import { collection, query, onSnapshot, orderBy, Timestamp, addDoc, doc, deleteDoc } from "firebase/firestore";
-import { FiDownload, FiSearch, FiFilter, FiCheckCircle, FiAlertCircle, FiX, FiFileText, FiEdit2, FiPlus, FiTrendingUp, FiTrendingDown, FiCreditCard, FiBarChart2, FiZap, FiHelpCircle, FiClock, FiChevronDown, FiTrash2 } from "react-icons/fi";
+import { useRouter } from 'next/navigation';
+import { db, auth } from "@/lib/firebaseApi";
+import { collection, query, onSnapshot, orderBy, Timestamp, addDoc, doc, deleteDoc, where, getDocs, limit, serverTimestamp } from "firebase/firestore";
+import { FiSearch, FiCheckCircle, FiAlertCircle, FiPlus, FiHelpCircle, FiClock, FiChevronDown, FiTrash2 } from "react-icons/fi";
+import Sidebar from "@/app/components/Sidebar";
+import Topbar from "@/app/components/Topbar";
+import { Bar } from "react-chartjs-2";
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  Title,
+  Tooltip,
+  Legend,
+} from "chart.js";
+
+ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
+
+interface Transaction {
+  id: string;
+  date: string;
+  desc: string;
+  category: string;
+  amount: number;
+  aiStatus?: 'Halal' | 'Haram' | 'Syubhat' | 'pending';
+  aiExplanation?: string;
+  createdAt?: Timestamp;
+}
+
+const mockTabs = [
+  { key: "journal", label: "Jurnal Umum" },
+  { key: "ledger", label: "Buku Besar" },
+  { key: "balance", label: "Neraca" },
+  { key: "pl", label: "Laba Rugi" },
+  { key: "cash", label: "Arus Kas" },
+  { key: "zis", label: "Laporan ZIS" },
+];
+
+const CATEGORY_OPTIONS = [
+  "Pendapatan",
+  "Beban Pokok",
+  "Beban Operasional",
+  "Aset Tetap",
+  "ZIS",
+  "Pendapatan Lain",
+  "Pengeluaran lain",
+];
+const TYPE_OPTIONS = ["Halal", "Syubhat", "Haram", "pending"] as const;
+
+const StatusBadge = ({ status }: { status: Transaction['aiStatus'] }) => {
+  switch (status) {
+    case 'Halal':
+      return <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-green-50 text-green-600"><FiCheckCircle /> Halal</span>;
+    case 'Syubhat':
+      return <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-yellow-50 text-yellow-600"><FiHelpCircle /> Syubhat</span>;
+    case 'Haram':
+      return <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-red-50 text-red-600"><FiAlertCircle /> Haram</span>;
+    default:
+      return <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600"><FiClock /> Pending</span>;
+  }
+};
+
+function formatCurrency(amount: number) {
+  return new Intl.NumberFormat("id-ID", {
+    style: "currency",
+    currency: "IDR",
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(amount);
+}
+
+export default function ReportPage() {
+  const router = useRouter();
+  const [userName, setUserName] = useState("");
+  const [mitraId, setMitraId] = useState<string | null>(null);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Filtering and Search State
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<Transaction['aiStatus'] | 'all'>('all');
+  const [categoryFilter, setCategoryFilter] = useState('all');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
+
+  // UI State
+  const [tab, setTab] = useState('journal');
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  
+  // Add Modal State
+  const [showModal, setShowModal] = useState(false);
+  const [adding, setAdding] = useState(false);
+  const [formError, setFormError] = useState("");
+  const [form, setForm] = useState({
+    date: "",
+    desc: "",
+    category: CATEGORY_OPTIONS[0],
+    amount: "",
+  });
+
+  // Delete Modal State
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+
+  // Toast Notification State
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+
+  // Fetch Mitra ID first
+  useEffect(() => {
+    const fetchMitra = async () => {
+      const user = auth.currentUser;
+      if (user) {
+        setUserName(user.displayName || "Pengguna");
+        const mitraQuery = query(collection(db, 'mitras'), where('ownerId', '==', user.uid), limit(1));
+        try {
+          const querySnapshot = await getDocs(mitraQuery);
+          if (!querySnapshot.empty) {
+            const mitraDoc = querySnapshot.docs[0];
+            setMitraId(mitraDoc.id);
+          } else {
+            setError("Anda belum terdaftar sebagai mitra. Silakan daftar terlebih dahulu.");
+            setLoading(false);
+          }
+        } catch (err) {
+          console.error("Error fetching mitra: ", err);
+          setError("Gagal memuat data mitra.");
+          setLoading(false);
+        }
+      } else {
+        // Handle case where user is not logged in
+        setError("Silakan login untuk melihat laporan.");
+        setLoading(false);
+      }
+    };
+    fetchMitra();
+  }, []);
+
+  // Fetch transactions once mitraId is available
+  useEffect(() => {
+    if (!mitraId) return;
+
+    const reportsCollectionRef = collection(db, `mitras/${mitraId}/transactionReports`);
+    const q = query(reportsCollectionRef, orderBy("createdAt", "desc"));
+
+    const unsubscribe = onSnapshot(q, (querySnapshot) => {
+      const reports: Transaction[] = [];
+      querySnapshot.forEach((doc) => {
+        const data = doc.data();
+        reports.push({
+          id: doc.id,
+          date: data.date,
+          desc: data.desc,
+          category: data.category,
+          amount: Number(data.amount) || 0,
+          aiStatus: data.aiStatus || 'pending',
+          aiExplanation: data.aiExplanation || '',
+          createdAt: data.createdAt,
+        });
+      });
+      setTransactions(reports);
+      setLoading(false);
+    }, (err) => {
+      console.error(err);
+      setError("Gagal memuat data laporan. Silakan coba lagi.");
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, [mitraId]);
+
+  const filteredTx = useMemo(() => {
+    return transactions
+      .filter(t => {
+        const searchLower = search.toLowerCase();
+        const date = t.createdAt ? t.createdAt.toDate() : new Date(t.date);
+        const from = dateFrom ? new Date(dateFrom) : null;
+        const to = dateTo ? new Date(dateTo) : null;
+
+        if (to) to.setHours(23, 59, 59, 999);
+
+        return (
+          (t.desc.toLowerCase().includes(searchLower) || t.category.toLowerCase().includes(searchLower)) &&
+          (statusFilter === 'all' || t.aiStatus === statusFilter) &&
+          (categoryFilter === 'all' || t.category === categoryFilter) &&
+          (!from || date >= from) &&
+          (!to || date <= to)
+        );
+      });
+  }, [transactions, search, statusFilter, categoryFilter, dateFrom, dateTo]);
+
+  const handleAdd = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!mitraId) return;
+
+    const { date, desc, category, amount } = form;
+    if (!date || !desc || !category || !amount) {
+      setFormError("Semua field wajib diisi.");
+      return;
+    }
+
+    setAdding(true);
+    setFormError("");
+
+    try {
+      await addDoc(collection(db, `mitras/${mitraId}/transactionReports`), {
+        date,
+        desc,
+        category,
+        amount: parseFloat(amount),
+        aiStatus: 'pending',
+        aiExplanation: '',
+        createdAt: serverTimestamp(),
+      });
+      setForm({ date: "", desc: "", category: CATEGORY_OPTIONS[0], amount: "" });
+      setShowModal(false);
+      setToast({ message: "Laporan berhasil ditambahkan!", type: 'success' });
+      setTimeout(() => setToast(null), 2500);
+    } catch (error) {
+      console.error("Error adding document: ", error);
+      setFormError("Gagal menambahkan laporan. Silakan coba lagi.");
+    } finally {
+      setAdding(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!deleteConfirm || !mitraId) return;
+    try {
+      await deleteDoc(doc(db, `mitras/${mitraId}/transactionReports`, deleteConfirm));
+      setToast({ message: "Laporan berhasil dihapus!", type: 'success' });
+      setTimeout(() => setToast(null), 2500);
+    } catch (error) {
+      console.error("Error deleting document: ", error);
+      setToast({ message: "Gagal menghapus laporan.", type: 'error' });
+      setTimeout(() => setToast(null), 2500);
+    } finally {
+      setShowDeleteModal(false);
+      setDeleteConfirm(null);
+    }
+  };
+
+  // Render logic starts here
+  if (loading) {
+    return <div className="flex h-screen items-center justify-center">Loading...</div>;
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col h-screen items-center justify-center text-center">
+        <p className="text-red-500 mb-4">{error}</p>
+        {error.includes("belum terdaftar") && (
+          <button 
+            onClick={() => router.push('/dashboard/mitra/register')}
+            className="bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-blue-700"
+          >
+            Daftar Mitra Sekarang
+          </button>
+        )}
+      </div>
+    );
+  }
+
+  // Main component render
+  return (
+    <div className="flex bg-gray-100 min-h-screen">
+      <Sidebar />
+      <div className="flex-1 flex flex-col">
+        <Topbar userName={userName} loading={loading} />
+        <main className="flex-1 p-6">
+          <h1 className="text-2xl font-bold text-gray-800 mb-6">Laporan Keuangan</h1>
+          
+          <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
+            <div className="flex items-center gap-2 flex-wrap">
+              <div className="relative">
+                <FiSearch className="absolute top-1/2 left-3 -translate-y-1/2 text-gray-400" />
+                <input type="text" placeholder="Cari transaksi..." value={search} onChange={(e) => setSearch(e.target.value)} className="w-full md:w-64 pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              </div>
+              <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as any)} className="bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <option value="all">Semua Status</option>
+                {TYPE_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+              </select>
+              <select value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)} className="bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <option value="all">Semua Kategori</option>
+                {CATEGORY_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+              </select>
+            </div>
+            <button onClick={() => setShowModal(true)} className="bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-blue-700 flex items-center gap-2 transition-colors">
+              <FiPlus /> Tambah Laporan
+            </button>
+          </div>
+
+          <div className="border-b border-gray-200 mb-6">
+            <nav className="-mb-px flex space-x-6 overflow-x-auto">
+              {mockTabs.map(t => (
+                <button key={t.key} onClick={() => setTab(t.key)} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors ${tab === t.key ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>
+                  {t.label}
+                </button>
+              ))}
+            </nav>
+          </div>
+
+          <div className="bg-white shadow-sm rounded-lg overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID Transaksi</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tanggal</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Deskripsi</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Kategori</th>
+                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Nominal</th>
+                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Status AI</th>
+                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200">
+                  {loading ? (
+                    <tr>
+                      <td colSpan={7} className="text-center py-10 text-gray-500">Memuat data...</td>
+                    </tr>
+                  ) : filteredTx.length > 0 ? (
+                    filteredTx.map((tx) => (
+                      <Fragment key={tx.id}>
+                        <tr className="hover:bg-gray-50 transition-colors">
+                          <td className="px-6 py-4 font-mono text-xs text-gray-700">{tx.id.slice(0, 8)}...</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-800">{new Date(tx.date).toLocaleDateString('id-ID')}</td>
+                          <td className="px-6 py-4 text-sm text-gray-800 max-w-xs truncate">{tx.desc}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{tx.category}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-medium text-gray-900">{formatCurrency(tx.amount)}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-center"><StatusBadge status={tx.aiStatus} /></td>
+                          <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium flex items-center justify-end gap-3">
+                            <button onClick={() => setExpandedId(expandedId === tx.id ? null : tx.id)} className="text-blue-600 hover:text-blue-800 transition-colors">
+                              <FiChevronDown className={`transition-transform ${expandedId === tx.id ? 'rotate-180' : ''}`} />
+                            </button>
+                            <button onClick={() => { setDeleteConfirm(tx.id); setShowDeleteModal(true); }} className="text-red-600 hover:text-red-800 transition-colors">
+                              <FiTrash2 />
+                            </button>
+                          </td>
+                        </tr>
+                        {expandedId === tx.id && (
+                          <tr className="bg-gray-50">
+                            <td colSpan={7} className="px-6 py-4">
+                              <div className="text-sm text-gray-700 p-2 bg-gray-100 rounded-md">
+                                <p className="font-semibold mb-1">Penjelasan AI:</p>
+                                <p className="whitespace-pre-wrap">{tx.aiExplanation || "Tidak ada penjelasan."}</p>
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                      </Fragment>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={7} className="text-center py-10 text-gray-500">Tidak ada data laporan yang cocok.</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {showModal && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+              <div className="bg-white p-6 rounded-lg shadow-xl w-full max-w-md animate-fadeIn">
+                <div className="flex justify-between items-center mb-4">
+                  <h2 className="text-xl font-bold">Tambah Laporan Baru</h2>
+                  <button onClick={() => setShowModal(false)} className="text-gray-500 hover:text-gray-800">&times;</button>
+                </div>
+                <form onSubmit={handleAdd} className="space-y-4">
+                  <div>
+                    <label htmlFor="date" className="block text-sm font-medium text-gray-700">Tanggal</label>
+                    <input type="date" id="date" value={form.date} onChange={(e) => setForm({...form, date: e.target.value})} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500" required />
+                  </div>
+                  <div>
+                    <label htmlFor="desc" className="block text-sm font-medium text-gray-700">Deskripsi</label>
+                    <input type="text" id="desc" value={form.desc} onChange={(e) => setForm({...form, desc: e.target.value})} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500" required />
+                  </div>
+                  <div>
+                    <label htmlFor="category" className="block text-sm font-medium text-gray-700">Kategori</label>
+                    <select id="category" value={form.category} onChange={(e) => setForm({...form, category: e.target.value})} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500" required>
+                      {CATEGORY_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label htmlFor="amount" className="block text-sm font-medium text-gray-700">Nominal</label>
+                    <input type="number" id="amount" value={form.amount} onChange={(e) => setForm({...form, amount: e.target.value})} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500" required />
+                  </div>
+                  {formError && <p className="text-sm text-red-600">{formError}</p>}
+                  <div className="flex justify-end gap-3 pt-2">
+                    <button type="button" onClick={() => setShowModal(false)} className="bg-gray-200 text-gray-800 py-2 px-4 rounded-lg hover:bg-gray-300 transition-colors">Batal</button>
+                    <button type="submit" disabled={adding} className="bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 disabled:bg-blue-300 transition-colors">{adding ? 'Menambahkan...' : 'Tambah'}</button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+
+          {showDeleteModal && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+              <div className="bg-white p-6 rounded-lg shadow-xl w-full max-w-sm text-center animate-fadeIn">
+                <h2 className="text-xl font-bold mb-2">Konfirmasi Hapus</h2>
+                <p className="text-gray-600 mb-6">Apakah Anda yakin ingin menghapus laporan ini? Tindakan ini tidak dapat dibatalkan.</p>
+                <div className="flex justify-center gap-4">
+                  <button onClick={() => setShowDeleteModal(false)} className="bg-gray-200 text-gray-800 py-2 px-6 rounded-lg hover:bg-gray-300 transition-colors">Batal</button>
+                  <button onClick={handleDelete} className="bg-red-600 text-white py-2 px-6 rounded-lg hover:bg-red-700 transition-colors">Hapus</button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {toast && (
+            <div className={`fixed bottom-5 right-5 p-4 rounded-lg shadow-lg text-white ${toast.type === 'success' ? 'bg-green-500' : 'bg-red-500'} animate-fadeIn`}>
+              {toast.message}
+            </div>
 import Sidebar from "@/app/components/Sidebar";
 import Topbar from "@/app/components/Topbar";
 import { Bar } from "react-chartjs-2";

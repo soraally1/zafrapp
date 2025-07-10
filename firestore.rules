@@ -9,13 +9,46 @@ service cloud.firestore {
 
     // Users collection
     match /users/{userId} {
-      allow get, list: if request.auth != null;
-      // A user can update their own document.
-      allow update: if request.auth.uid == userId;
-      // Any authenticated user can CREATE a user document (for registration).
-      allow create: if request.auth != null;
-      // HR-Keuangan can delete or update any user
-      allow delete, update: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'hr-keuangan';
+      // A user can create their own user document with valid data.
+      allow create: if request.auth.uid == userId
+                    && request.resource.data.keys().hasAll(['name', 'email', 'role', 'createdAt'])
+                    && request.resource.data.keys().size() == 4
+                    && request.resource.data.name is string
+                    && request.resource.data.email is string
+                    && request.resource.data.role is string
+                    && request.resource.data.createdAt is string
+                    && request.resource.data.role in ['hr-keuangan', 'karyawan', 'umkm-amil'];
+
+      // A user can read their own data; HR can read any user's data.
+      allow get: if request.auth.uid == userId 
+                 || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'hr-keuangan';
+
+      // A user can update their own document; HR can update any.
+      allow update: if request.auth.uid == userId 
+                    || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'hr-keuangan';
+
+      // Only HR can delete a user.
+      allow delete: if get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'hr-keuangan';
+    }
+
+    // Mitra (UMKM) collection
+    match /mitra/{mitraId} {
+      // A user can create their own mitra document if their role is 'umkm-amil'.
+      allow create: if request.auth.uid == mitraId
+                    && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'umkm-amil'
+                    && request.resource.data.keys().hasAll(['userId', 'namaMitra', 'alamatMitra', 'detailBisnis', 'jenisUsaha', 'createdAt'])
+                    && request.resource.data.userId == request.auth.uid;
+
+      // A user can read their own mitra data; HR can read any.
+      allow get: if request.auth.uid == mitraId 
+                 || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'hr-keuangan';
+
+      // A user can update their own mitra data; HR can update any.
+      allow update: if request.auth.uid == mitraId 
+                    || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'hr-keuangan';
+
+      // Only HR can delete a mitra document.
+      allow delete: if get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'hr-keuangan';
     }
 
     // Payrolls collection (consolidated)
@@ -26,7 +59,7 @@ service cloud.firestore {
       allow get, list, read: if request.auth != null && resource.data.userId == request.auth.uid;
       // HR-Keuangan can create/update/delete payrolls
       allow create, update, delete: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'hr-keuangan';
-      // Karyawan can update their own payroll (e.g., mark zakat as paid)
+     // Karyawan can update their own payroll (e.g., mark zakat as paid)
       allow update: if request.auth != null && resource.data.userId == request.auth.uid;
     }
 
