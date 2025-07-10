@@ -1,12 +1,8 @@
 "use client"
-
 import { useState, useRef, useEffect } from "react"
 import {
   CalendarIcon,
   DollarSign,
-  Home,
-
-  Settings,
   TrendingUp,
   Wallet,
   ChevronLeft,
@@ -16,16 +12,19 @@ import {
   Gift,
   Shield,
   CheckCircle2,
+  Star,
+  Heart,
+  Moon,
 } from "lucide-react"
 import Sidebar from "../../components/Sidebar"
 import type React from "react"
-import Topbar from "../../components/Topbar";
-import { getAuth, onAuthStateChanged } from "firebase/auth";
-import { getUserProfile } from "@/app/api/service/userProfileService";
-import { getUserPayroll, markZakatPaid } from "@/app/api/service/payrollService";
-import { useRouter } from "next/navigation";
+import Topbar from "../../components/Topbar"
+import { getAuth, onAuthStateChanged } from "firebase/auth"
+import { getUserProfile } from "@/app/api/service/userProfileService"
+import { getUserPayroll, markZakatPaid } from "@/app/api/service/payrollService"
+import { useRouter } from "next/navigation"
 
-// Updated Button Component with modern styling
+// Updated Button Component with Islamic styling
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: "primary" | "secondary" | "ghost" | "outline" | "destructive" | "link"
   size?: "sm" | "md" | "lg" | "icon"
@@ -34,24 +33,25 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 function Button({ variant = "primary", size = "md", className = "", children, ...props }: ButtonProps) {
-  const baseClasses = "inline-flex items-center justify-center rounded-lg font-medium transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none"
-
+  const baseClasses =
+    "inline-flex items-center justify-center rounded-lg font-medium transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none"
   const variants = {
-    primary: "bg-indigo-600 text-white hover:bg-indigo-700 focus:ring-indigo-500 shadow-sm",
-    secondary: "bg-gray-50 text-gray-900 hover:bg-gray-100 focus:ring-gray-300 border border-gray-200 shadow-sm",
-    ghost: "text-gray-600 hover:bg-gray-50 focus:ring-gray-300",
-    outline: "border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 focus:ring-gray-300 shadow-sm",
-    destructive: "bg-red-600 text-white hover:bg-red-700 focus:ring-red-500 shadow-sm",
-    link: "text-indigo-600 hover:text-indigo-800 underline-offset-4 hover:underline focus:ring-indigo-300 p-0 h-auto"
+    primary:
+      "bg-gradient-to-r from-emerald-600 to-emerald-700 text-white hover:from-emerald-700 hover:to-emerald-800 focus:ring-emerald-500 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5",
+    secondary:
+      "bg-gradient-to-r from-amber-50 to-amber-100 text-amber-800 hover:from-amber-100 hover:to-amber-200 focus:ring-amber-300 border border-amber-200 shadow-md",
+    ghost: "text-emerald-700 hover:bg-emerald-50 focus:ring-emerald-300",
+    outline: "border border-emerald-300 bg-white text-emerald-700 hover:bg-emerald-50 focus:ring-emerald-300 shadow-md",
+    destructive:
+      "bg-gradient-to-r from-red-600 to-red-700 text-white hover:from-red-700 hover:to-red-800 focus:ring-red-500 shadow-lg",
+    link: "text-emerald-600 hover:text-emerald-800 underline-offset-4 hover:underline focus:ring-emerald-300 p-0 h-auto",
   }
-
   const sizes = {
     sm: "h-8 px-3 text-xs",
     md: "h-10 px-4 text-sm",
     lg: "h-12 px-6 text-base",
     icon: "h-10 w-10",
   }
-
   return (
     <button className={`${baseClasses} ${variants[variant]} ${sizes[size]} ${className}`} {...props}>
       {children}
@@ -59,33 +59,46 @@ function Button({ variant = "primary", size = "md", className = "", children, ..
   )
 }
 
-// Updated Card Components with modern styling
+// Updated Card Components with Islamic styling
 interface CardProps {
   children: React.ReactNode
   className?: string
 }
 
 function Card({ children, className = "" }: CardProps) {
-  return <div className={`bg-white rounded-xl border border-gray-100 shadow-xs overflow-hidden ${className}`}>{children}</div>
+  return (
+    <div className={`bg-white rounded-2xl border border-emerald-100 shadow-lg overflow-hidden relative ${className}`}>
+      <div className="absolute top-0 right-0 w-20 h-20 opacity-5">
+        <div className="w-full h-full bg-gradient-to-br from-emerald-400 to-amber-400 rounded-full transform rotate-45"></div>
+      </div>
+      {children}
+    </div>
+  )
 }
 
 function CardHeader({ children, className = "" }: CardProps) {
-  return <div className={`px-5 py-4 border-b border-gray-100 ${className}`}>{children}</div>
+  return (
+    <div
+      className={`px-6 py-5 border-b border-emerald-50 bg-gradient-to-r from-emerald-50/30 to-amber-50/30 ${className}`}
+    >
+      {children}
+    </div>
+  )
 }
 
 function CardContent({ children, className = "" }: CardProps) {
-  return <div className={`p-5 ${className}`}>{children}</div>
+  return <div className={`p-6 ${className}`}>{children}</div>
 }
 
 function CardTitle({ children, className = "" }: CardProps) {
-  return <h3 className={`text-base font-semibold text-gray-900 ${className}`}>{children}</h3>
+  return <h3 className={`text-lg font-bold text-emerald-800 ${className}`}>{children}</h3>
 }
 
 function CardDescription({ children, className = "" }: CardProps) {
-  return <p className={`text-sm text-gray-500 mt-1 ${className}`}>{children}</p>
+  return <p className={`text-sm text-emerald-600 mt-1 ${className}`}>{children}</p>
 }
 
-// Updated Badge Component
+// Updated Badge Component with Islamic colors
 interface BadgeProps {
   children: React.ReactNode
   variant?: "default" | "secondary" | "destructive" | "outline" | "success"
@@ -94,23 +107,22 @@ interface BadgeProps {
 
 function Badge({ children, variant = "default", className = "" }: BadgeProps) {
   const variants = {
-    default: "bg-indigo-100 text-indigo-800",
-    secondary: "bg-gray-100 text-gray-800",
-    destructive: "bg-red-100 text-red-800",
-    outline: "border border-gray-200 text-gray-700 bg-white",
-    success: "bg-green-100 text-green-800"
+    default: "bg-gradient-to-r from-emerald-100 to-emerald-200 text-emerald-800 border border-emerald-300",
+    secondary: "bg-gradient-to-r from-slate-100 to-slate-200 text-slate-800 border border-slate-300",
+    destructive: "bg-gradient-to-r from-red-100 to-red-200 text-red-800 border border-red-300",
+    outline: "border border-emerald-200 text-emerald-700 bg-white",
+    success: "bg-gradient-to-r from-green-100 to-green-200 text-green-800 border border-green-300",
   }
-
   return (
     <span
-      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${variants[variant]} ${className}`}
+      className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${variants[variant]} ${className}`}
     >
       {children}
     </span>
   )
 }
 
-// Updated Progress Component
+// Updated Progress Component with Islamic styling
 interface ProgressProps {
   value: number
   className?: string
@@ -121,14 +133,14 @@ function Progress({ value, className = "", showLabel = false }: ProgressProps) {
   return (
     <div className={`w-full ${className}`}>
       {showLabel && (
-        <div className="flex justify-between text-xs text-gray-500 mb-1">
+        <div className="flex justify-between text-xs text-emerald-600 mb-2">
           <span>Progress</span>
           <span>{Math.round(value)}%</span>
         </div>
       )}
-      <div className="w-full bg-gray-100 rounded-full h-2">
+      <div className="w-full bg-emerald-100 rounded-full h-3 shadow-inner">
         <div
-          className="bg-indigo-600 h-2 rounded-full transition-all duration-300"
+          className="bg-gradient-to-r from-emerald-500 to-emerald-600 h-3 rounded-full transition-all duration-500 shadow-sm"
           style={{ width: `${Math.min(100, Math.max(0, value))}%` }}
         />
       </div>
@@ -138,9 +150,9 @@ function Progress({ value, className = "", showLabel = false }: ProgressProps) {
 
 // Updated Dropdown Components
 interface DropdownProps {
-  trigger: React.ReactNode;
-  children: React.ReactNode;
-  align?: "left" | "right";
+  trigger: React.ReactNode
+  children: React.ReactNode
+  align?: "left" | "right"
 }
 
 function Dropdown({ trigger, children, align = "left" }: DropdownProps) {
@@ -153,7 +165,6 @@ function Dropdown({ trigger, children, align = "left" }: DropdownProps) {
         setIsOpen(false)
       }
     }
-
     document.addEventListener("mousedown", handleClickOutside)
     return () => document.removeEventListener("mousedown", handleClickOutside)
   }, [])
@@ -161,12 +172,10 @@ function Dropdown({ trigger, children, align = "left" }: DropdownProps) {
   return (
     <div className="relative" ref={dropdownRef}>
       <div onClick={() => setIsOpen(!isOpen)}>{trigger}</div>
-
       {isOpen && (
         <div
-          className={`absolute top-full mt-1 w-56 bg-white rounded-lg shadow-lg border border-gray-100 py-1 z-50 ${
-            align === "right" ? "right-0" : "left-0"
-          }`}
+          className={`absolute top-full mt-2 w-56 bg-white rounded-xl shadow-xl border border-emerald-100 py-2 z-50 ${align === "right" ? "right-0" : "left-0"
+            }`}
         >
           {children}
         </div>
@@ -186,7 +195,7 @@ function DropdownItem({
 }) {
   return (
     <button
-      className={`w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center ${className}`}
+      className={`w-full text-left px-4 py-3 text-sm text-emerald-700 hover:bg-emerald-50 flex items-center transition-colors ${className}`}
       onClick={onClick}
     >
       {children}
@@ -194,15 +203,14 @@ function DropdownItem({
   )
 }
 
-// Updated Calendar Component with modern styling
+// Updated Calendar Component with Islamic styling
 interface CalendarProps {
-  selectedDate: Date | null;
-  onDateSelect?: (date: Date) => void;
+  selectedDate: Date | null
+  onDateSelect?: (date: Date) => void
 }
 
 function Calendar({ selectedDate, onDateSelect }: CalendarProps) {
   const [currentDate, setCurrentDate] = useState(new Date())
-
   const monthNames = [
     "Januari",
     "Februari",
@@ -217,7 +225,6 @@ function Calendar({ selectedDate, onDateSelect }: CalendarProps) {
     "November",
     "Desember",
   ]
-
   const dayNames = ["M", "S", "S", "R", "K", "J", "S"]
 
   const getDaysInMonth = (date: Date) => {
@@ -227,15 +234,12 @@ function Calendar({ selectedDate, onDateSelect }: CalendarProps) {
     const lastDay = new Date(year, month + 1, 0)
     const daysInMonth = lastDay.getDate()
     const startingDayOfWeek = firstDay.getDay()
-
     const days = []
 
-    // Add empty cells for days before the first day of the month
     for (let i = 0; i < startingDayOfWeek; i++) {
       days.push(null)
     }
 
-    // Add days of the month
     for (let day = 1; day <= daysInMonth; day++) {
       days.push(new Date(year, month, day))
     }
@@ -265,35 +269,35 @@ function Calendar({ selectedDate, onDateSelect }: CalendarProps) {
 
   return (
     <div className="p-4">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-4">
-        <button 
-          onClick={goToPreviousMonth} 
-          className="p-1 hover:bg-gray-50 rounded-md text-gray-500 hover:text-gray-700"
+      <div className="flex items-center justify-between mb-6">
+        <button
+          onClick={goToPreviousMonth}
+          className="p-2 hover:bg-emerald-50 rounded-lg text-emerald-600 hover:text-emerald-700 transition-colors"
         >
           <ChevronLeft className="h-5 w-5" />
         </button>
-        <h2 className="text-sm font-semibold text-gray-900">
+        <h2 className="text-lg font-bold text-emerald-800">
           {monthNames[currentDate.getMonth()]} {currentDate.getFullYear()}
         </h2>
-        <button 
-          onClick={goToNextMonth} 
-          className="p-1 hover:bg-gray-50 rounded-md text-gray-500 hover:text-gray-700"
+        <button
+          onClick={goToNextMonth}
+          className="p-2 hover:bg-emerald-50 rounded-lg text-emerald-600 hover:text-emerald-700 transition-colors"
         >
           <ChevronRight className="h-5 w-5" />
         </button>
       </div>
 
-      {/* Day names */}
-      <div className="grid grid-cols-7 gap-1 mb-2">
+      <div className="grid grid-cols-7 gap-1 mb-3">
         {dayNames.map((day) => (
-          <div key={day} className="text-center text-xs font-medium text-gray-500 h-8 flex items-center justify-center">
+          <div
+            key={day}
+            className="text-center text-sm font-bold text-emerald-700 h-10 flex items-center justify-center"
+          >
             {day}
           </div>
         ))}
       </div>
 
-      {/* Days */}
       <div className="grid grid-cols-7 gap-1">
         {days.map((date, index) => (
           <button
@@ -301,11 +305,11 @@ function Calendar({ selectedDate, onDateSelect }: CalendarProps) {
             onClick={() => date && onDateSelect?.(date)}
             disabled={!date}
             className={`
-              h-8 w-8 text-sm rounded-md transition-colors text-center
+              h-10 w-10 text-sm rounded-lg transition-all duration-200 text-center font-medium
               ${!date ? "invisible" : ""}
-              ${isSelectedDate(date) ? "bg-indigo-600 text-white font-medium" : ""}
-              ${isToday(date) && !isSelectedDate(date) ? "border border-indigo-200 text-indigo-600 font-medium" : ""}
-              ${date && !isSelectedDate(date) && !isToday(date) ? "hover:bg-gray-50 text-gray-700" : "text-gray-500"}
+              ${isSelectedDate(date) ? "bg-gradient-to-r from-emerald-500 to-emerald-600 text-white shadow-lg transform scale-105" : ""}
+              ${isToday(date) && !isSelectedDate(date) ? "border-2 border-amber-400 text-amber-600 font-bold bg-amber-50" : ""}
+              ${date && !isSelectedDate(date) && !isToday(date) ? "hover:bg-emerald-50 text-emerald-700 hover:scale-105" : "text-slate-500"}
             `}
           >
             {date?.getDate()}
@@ -316,78 +320,94 @@ function Calendar({ selectedDate, onDateSelect }: CalendarProps) {
   )
 }
 
-// Main Dashboard Component with modern redesign
+// Islamic Quote Component
+function IslamicQuote({ quote, source }: { quote: string; source: string }) {
+  return (
+    <div className="bg-gradient-to-r from-emerald-50 to-amber-50 rounded-xl p-6 border border-emerald-200 shadow-md">
+      <div className="flex items-start gap-4">
+        <div className="flex-shrink-0">
+          <div className="w-12 h-12 bg-gradient-to-r from-emerald-500 to-amber-500 rounded-full flex items-center justify-center">
+            <Star className="w-6 h-6 text-white" />
+          </div>
+        </div>
+        <div className="flex-1">
+          <p className="text-emerald-800 font-medium italic leading-relaxed mb-2">"{quote}"</p>
+          <p className="text-emerald-600 text-sm font-semibold">— {source}</p>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// Main Dashboard Component with Islamic redesign
 export default function KaryawanDashboard() {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date())
-  const [userName, setUserName] = useState("");
-  const [userRole, setUserRole] = useState("");
-  const [userPhoto, setUserPhoto] = useState<string | undefined>(undefined);
-  const [loadingUser, setLoadingUser] = useState(true);
-  const [payroll, setPayroll] = useState<any>(null);
-  const [payrollLoading, setPayrollLoading] = useState(true);
-  const router = useRouter();
-  const [zakatPaymentMethod, setZakatPaymentMethod] = useState("");
-  const [zakatPaying, setZakatPaying] = useState(false);
+  const [userName, setUserName] = useState("")
+  const [userRole, setUserRole] = useState("")
+  const [userPhoto, setUserPhoto] = useState<string | undefined>(undefined)
+  const [loadingUser, setLoadingUser] = useState(true)
+  const [payroll, setPayroll] = useState<any>(null)
+  const [payrollLoading, setPayrollLoading] = useState(true)
+  const router = useRouter()
+  const [zakatPaymentMethod, setZakatPaymentMethod] = useState("")
+  const [zakatPaying, setZakatPaying] = useState(false)
 
   useEffect(() => {
-    const auth = getAuth();
+    const auth = getAuth()
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user && user.uid) {
         try {
-          const profile = await getUserProfile(user.uid);
-          setUserName(profile?.name || "");
-          setUserRole(profile?.role || "");
-          setUserPhoto(profile?.photo);
+          const profile = await getUserProfile(user.uid)
+          setUserName(profile?.name || "")
+          setUserRole(profile?.role || "")
+          setUserPhoto(profile?.photo)
         } catch {
-          setUserName("");
-          setUserRole("");
-          setUserPhoto(undefined);
+          setUserName("")
+          setUserRole("")
+          setUserPhoto(undefined)
         }
       } else {
-        setUserName("");
-        setUserRole("");
-        setUserPhoto(undefined);
+        setUserName("")
+        setUserRole("")
+        setUserPhoto(undefined)
       }
-      setLoadingUser(false);
-    });
-    return () => unsubscribe();
-  }, []);
+      setLoadingUser(false)
+    })
+    return () => unsubscribe()
+  }, [])
 
-  // Add a helper to fetch payroll
   const fetchPayroll = async (userId: string, month: string) => {
-    setPayrollLoading(true);
+    setPayrollLoading(true)
     try {
-      const res = await getUserPayroll(userId, month);
+      const res = await getUserPayroll(userId, month)
       if (res.success) {
-        setPayroll(res.data);
-      } else {
-        // Removed unused setPayrollError
+        setPayroll(res.data)
       }
     } catch {
-      // Removed unused setPayrollError
+      // Handle error
     } finally {
-      setPayrollLoading(false);
+      setPayrollLoading(false)
     }
-  };
+  }
 
   useEffect(() => {
-    if (!userName || !userRole || loadingUser) return;
-    const now = new Date();
-    const month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-    const auth = getAuth();
-    const user = auth.currentUser;
-    if (!user) return;
-    fetchPayroll(user.uid, month);
-  }, [userName, userRole, loadingUser]);
+    if (!userName || !userRole || loadingUser) return
+    const now = new Date()
+    const month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`
+    const auth = getAuth()
+    const user = auth.currentUser
+    if (!user) return
+    fetchPayroll(user.uid, month)
+  }, [userName, userRole, loadingUser])
 
   useEffect(() => {
     if (!loadingUser && userRole && userRole !== "karyawan") {
-      router.push("/login");
+      router.push("/login")
     }
-  }, [loadingUser, userRole, router]);
+  }, [loadingUser, userRole, router])
 
   if (loadingUser || (!userRole && !payrollLoading)) {
-    return null; // or a spinner
+    return null
   }
 
   const events = [
@@ -396,234 +416,372 @@ export default function KaryawanDashboard() {
     { date: "2024-01-25", title: "Gajian", type: "salary" },
   ]
 
-  // Handler to mark zakat as paid
   const handleMarkZakatPaid = async () => {
-    if (!payroll?.id) return;
-    // Removed unused setZakatUpdating
+    if (!payroll?.id) return
     try {
-      const auth = getAuth();
-      const user = auth.currentUser;
-      if (!user) return;
-      const now = new Date();
-      const month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-      const success = await markZakatPaid(payroll.id);
+      const auth = getAuth()
+      const user = auth.currentUser
+      if (!user) return
+      const now = new Date()
+      const month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`
+      const success = await markZakatPaid(payroll.id)
       if (success) {
-        setPayroll((prev: any) => ({ ...prev, zakatPaid: true }));
-        await fetchPayroll(user.uid, month);
+        setPayroll((prev: any) => ({ ...prev, zakatPaid: true }))
+        await fetchPayroll(user.uid, month)
       } else {
-        alert("Gagal memperbarui status zakat. Silakan coba lagi.");
+        alert("Gagal memperbarui status zakat. Silakan coba lagi.")
       }
     } catch (e) {
-      alert("Terjadi kesalahan saat memperbarui status zakat.");
-    } finally {
-      // Removed unused setZakatUpdating
+      alert("Terjadi kesalahan saat memperbarui status zakat.")
     }
-  };
+  }
 
-  // Handler to simulate zakat payment
   const handleSimulateZakatPayment = async () => {
-    setZakatPaying(true);
+    setZakatPaying(true)
     setTimeout(async () => {
-      await handleMarkZakatPaid();
-      setZakatPaying(false);
-    }, 1500); // Simulate payment processing
-  };
- 
-  const GOLD_PRICE_PER_GRAM = 1350000; 
-  const NISAB_GRAM = 85;
-  const nisab = GOLD_PRICE_PER_GRAM * NISAB_GRAM;
-  const currentMonth = new Date().getMonth() + 1;
-  const yearToDateSavings = payroll?.netSalary ? payroll.netSalary * currentMonth : 0;
+      await handleMarkZakatPaid()
+      setZakatPaying(false)
+    }, 1500)
+  }
 
-  // Defensive fallback for zakatPaid
-  const zakatPaid = payroll?.zakatPaid === true;
-  const zakatDue = payroll?.zakat > 0 && !zakatPaid;
+  const GOLD_PRICE_PER_GRAM = 1350000
+  const NISAB_GRAM = 85
+  const nisab = GOLD_PRICE_PER_GRAM * NISAB_GRAM
+  const currentMonth = new Date().getMonth() + 1
+  const yearToDateSavings = (payroll?.netSalary || 0) * (new Date().getMonth() + 1)
+  const zakatPaid = payroll?.zakatPaid === true
+  const zakatDue = payroll?.zakat > 0 && !zakatPaid
+
+  if (payrollLoading) {
+    return (
+      <div className="min-h-screen flex bg-gradient-to-br from-emerald-50 via-white to-amber-50">
+        <Sidebar />
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <Topbar userName={userName} userRole={userRole} userPhoto={userPhoto} loading={loadingUser} />
+          <main className="flex-1 overflow-y-auto p-4 md:p-6 flex items-center justify-center">
+            <div className="text-emerald-600">Memuat data payroll...</div>
+          </main>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen flex bg-gray-50">
+    <div className="min-h-screen flex bg-gradient-to-br from-emerald-50 via-white to-amber-50">
+      <Sidebar />
 
-      <Sidebar/>
-
-      {/* Main content */}
       <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Topbar */}
         <Topbar userName={userName} userRole={userRole} userPhoto={userPhoto} loading={loadingUser} />
-        {/* Dashboard content */}
-        <main className="flex-1 overflow-y-auto p-6">
 
-          {/* Salary overview cards - Modern grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
-            <Card className="border-indigo-100 bg-gradient-to-br from-indigo-50 to-white shadow-md hover:shadow-lg transition-shadow duration-300">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Gaji Bulan Ini</CardTitle>
-                <DollarSign className="h-4 w-4 text-indigo-500" />
+        <main className="flex-1 overflow-y-auto p-4 md:p-6">
+
+
+          <div className="mb-8">
+            <IslamicQuote
+              quote="وَأَنْ لَيْسَ لِلْإِنْسَانِ إِلَّا مَا سَعَىٰ - Dan bahwasanya seorang manusia tiada memperoleh selain apa yang telah diusahakannya"
+              source="QS. An-Najm: 39"
+            />
+          </div>
+
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-8">
+            <Card className="border-emerald-200 bg-gradient-to-br from-emerald-50 to-white shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+                <CardTitle className="text-sm font-bold text-emerald-800">Gaji Bulan Ini</CardTitle>
+                <div className="w-10 h-10 bg-gradient-to-r from-emerald-500 to-emerald-600 rounded-full flex items-center justify-center">
+                  <DollarSign className="h-5 w-5 text-white" />
+                </div>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-gray-900">Rp {payroll?.netSalary?.toLocaleString("id-ID") || "0"}</div>
-                <p className="text-xs text-gray-500 mt-1">+3.7% dari bulan lalu</p>
+                <div className="text-2xl font-bold text-emerald-900 mb-1">
+                  Rp {((payroll?.netSalary || 0) * (new Date().getMonth() + 1)).toLocaleString("id-ID")}
+                </div>
+                <p className="text-xs text-emerald-600 flex items-center gap-1">
+                  <TrendingUp className="w-3 h-3" />
+                  +3.7% dari bulan lalu
+                </p>
               </CardContent>
             </Card>
 
-            <Card className="shadow-md hover:shadow-lg transition-shadow duration-300">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Total Tahun Ini</CardTitle>
-                <TrendingUp className="h-4 w-4 text-gray-500" />
+            <Card className="shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+                <CardTitle className="text-sm font-bold text-emerald-800">Total Tahun Ini</CardTitle>
+                <div className="w-10 h-10 bg-gradient-to-r from-amber-500 to-amber-600 rounded-full flex items-center justify-center">
+                  <TrendingUp className="h-5 w-5 text-white" />
+                </div>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-gray-900">Rp {payroll?.netSalary * (new Date().getMonth() + 1) || "0"}</div>
-                <p className="text-xs text-gray-500 mt-1">11 bulan kerja</p>
+                <div className="text-2xl font-bold text-emerald-900 mb-1">
+                  Rp {((Number(payroll?.netSalary) || 0) * (new Date().getMonth() + 1)).toLocaleString("id-ID") || "0"}
+                </div>
+                <p className="text-xs text-emerald-600">{new Date().getMonth() + 1} bulan kerja</p>
               </CardContent>
             </Card>
 
-            <Card className="shadow-md hover:shadow-lg transition-shadow duration-300">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Bonus</CardTitle>
-                <Gift className="h-4 w-4 text-gray-500" />
+            <Card className="shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+                <CardTitle className="text-sm font-bold text-emerald-800">Bonus & Tunjangan</CardTitle>
+                <div className="w-10 h-10 bg-gradient-to-r from-purple-500 to-purple-600 rounded-full flex items-center justify-center">
+                  <Gift className="h-5 w-5 text-white" />
+                </div>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-gray-900">Rp {payroll?.allowances?.other || "0"}</div>
-                <p className="text-xs text-gray-500 mt-1">Bonus kinerja Q4</p>
+                <div className="text-2xl font-bold text-emerald-900 mb-1">
+                  Rp {payroll?.allowances?.other?.toLocaleString("id-ID") || "0"}
+                </div>
+                <p className="text-xs text-emerald-600">Bonus kinerja Q4</p>
               </CardContent>
             </Card>
 
-            <Card className="shadow-md hover:shadow-lg transition-shadow duration-300">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Status Zakat</CardTitle>
-                <Shield className="h-4 w-4 text-gray-500" />
+            <Card className="border-amber-200 bg-gradient-to-br from-amber-50 to-white shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+                <CardTitle className="text-sm font-bold text-emerald-800">Status Zakat</CardTitle>
+                <div className="w-10 h-10 bg-gradient-to-r from-green-500 to-green-600 rounded-full flex items-center justify-center">
+                  <Shield className="h-5 w-5 text-white" />
+                </div>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-gray-900">Rp {payroll?.zakat || "0"}</div>
-                <Badge variant={payroll?.zakat > 0 ? "destructive" : "secondary"} className="mt-1">
+                <div className="text-2xl font-bold text-emerald-900 mb-1">
+                  Rp {payroll?.zakat?.toLocaleString("id-ID") || "0"}
+                </div>
+                <Badge variant={payroll?.zakat > 0 ? "destructive" : "success"} className="mt-1">
                   {payroll?.zakat > 0 ? "Wajib Zakat" : "Belum Wajib"}
                 </Badge>
               </CardContent>
             </Card>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-            {/* Salary breakdown - Modern card design */}
-            <div className="lg:col-span-2 space-y-5">
-              <Card className="shadow-md hover:shadow-lg transition-shadow duration-300">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
+
+            <div className="lg:col-span-2 space-y-6">
+              <Card className="shadow-xl hover:shadow-2xl transition-all duration-300">
                 <CardHeader>
-                  <CardTitle>Rincian Gaji Bulan Ini</CardTitle>
-                  <CardDescription>Detail pendapatan dan potongan bulan Januari 2024</CardDescription>
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 bg-gradient-to-r from-emerald-500 to-emerald-600 rounded-lg flex items-center justify-center">
+                      <FileText className="w-4 h-4 text-white" />
+                    </div>
+                    <div>
+                      <CardTitle>Rincian Gaji Bulan Ini</CardTitle>
+                      <CardDescription>
+                        Detail pendapatan dan potongan bulan{" "}
+                        {new Date().toLocaleDateString("id-ID", { month: "long", year: "numeric" })}
+                      </CardDescription>
+                    </div>
+                  </div>
                 </CardHeader>
-                <CardContent className="space-y-4">
+                <CardContent className="space-y-6">
                   <div className="space-y-4">
-                    <div className="space-y-3">
-                      <h4 className="text-sm font-medium text-gray-900">Pendapatan</h4>
-                      <div className="space-y-2">
-                        <div className="flex justify-between items-center text-sm">
-                          <span className="text-gray-600">Gaji Pokok</span>
-                          <span className="font-medium">Rp {payroll?.basicSalary || "0"}</span>
+                    <div className="bg-gradient-to-r from-emerald-50 to-emerald-100 rounded-xl p-4 border border-emerald-200">
+                      <h4 className="text-lg font-bold text-emerald-800 mb-4 flex items-center gap-2">
+                        <TrendingUp className="w-5 h-5" />
+                        Pendapatan
+                      </h4>
+                      <div className="space-y-3">
+                        <div className="flex justify-between items-center text-sm bg-white rounded-lg p-3 shadow-sm">
+                          <span className="text-emerald-700 font-medium">Gaji Pokok</span>
+                          <span className="font-bold text-emerald-800">
+                            Rp {payroll?.basicSalary?.toLocaleString("id-ID") || "0"}
+                          </span>
                         </div>
-                        <div className="flex justify-between items-center text-sm">
-                          <span className="text-gray-600">Tunjangan Jabatan</span>
-                          <span className="font-medium">Rp {payroll?.allowances?.positionAllowance || "0"}</span>
+                        <div className="flex justify-between items-center text-sm bg-white rounded-lg p-3 shadow-sm">
+                          <span className="text-emerald-700 font-medium">Tunjangan Jabatan</span>
+                          <span className="font-bold text-emerald-800">
+                            Rp {payroll?.allowances?.positionAllowance?.toLocaleString("id-ID") || "0"}
+                          </span>
                         </div>
-                        <div className="flex justify-between items-center text-sm">
-                          <span className="text-gray-600">Tunjangan Transport</span>
-                          <span className="font-medium">Rp {payroll?.allowances?.transportAllowance || "0"}</span>
+                        <div className="flex justify-between items-center text-sm bg-white rounded-lg p-3 shadow-sm">
+                          <span className="text-emerald-700 font-medium">Tunjangan Transport</span>
+                          <span className="font-bold text-emerald-800">
+                            Rp {payroll?.allowances?.transportAllowance?.toLocaleString("id-ID") || "0"}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="border-t border-emerald-200 pt-4 mt-4">
+                        <div className="flex justify-between items-center bg-emerald-600 text-white rounded-lg p-3">
+                          <span className="font-bold">Total Pendapatan</span>
+                          <span className="font-bold text-lg">
+                            Rp {payroll?.totalEarnings?.toLocaleString("id-ID") || "0"}
+                          </span>
                         </div>
                       </div>
                     </div>
 
-                    <div className="border-t border-gray-100 pt-3">
-                      <div className="flex justify-between items-center text-sm font-medium">
-                        <span>Total Pendapatan</span>
-                        <span>Rp {payroll?.totalEarnings || "0"}</span>
+                    <div className="bg-gradient-to-r from-red-50 to-red-100 rounded-xl p-4 border border-red-200">
+                      <h4 className="text-lg font-bold text-red-800 mb-4 flex items-center gap-2">
+                        <Shield className="w-5 h-5" />
+                        Potongan
+                      </h4>
+                      <div className="space-y-3">
+                        <div className="flex justify-between items-center text-sm bg-white rounded-lg p-3 shadow-sm">
+                          <span className="text-red-700 font-medium">BPJS Kesehatan</span>
+                          <span className="text-red-600 font-bold">
+                            -Rp {payroll?.deductions?.healthInsurance?.toLocaleString("id-ID") || "0"}
+                          </span>
+                        </div>
+                        <div className="flex justify-between items-center text-sm bg-white rounded-lg p-3 shadow-sm">
+                          <span className="text-red-700 font-medium">BPJS Ketenagakerjaan</span>
+                          <span className="text-red-600 font-bold">
+                            -Rp {payroll?.deductions?.employmentInsurance?.toLocaleString("id-ID") || "0"}
+                          </span>
+                        </div>
+                        <div className="flex justify-between items-center text-sm bg-white rounded-lg p-3 shadow-sm">
+                          <span className="text-red-700 font-medium">PPh 21</span>
+                          <span className="text-red-600 font-bold">
+                            -Rp {payroll?.deductions?.incomeTax?.toLocaleString("id-ID") || "0"}
+                          </span>
+                        </div>
                       </div>
                     </div>
 
-                    <div className="space-y-3">
-                      <h4 className="text-sm font-medium text-gray-900">Potongan</h4>
-                      <div className="space-y-2">
-                        <div className="flex justify-between items-center text-sm">
-                          <span className="text-gray-600">BPJS Kesehatan</span>
-                          <span className="text-red-600 font-medium">-Rp {payroll?.deductions?.healthInsurance || "0"}</span>
-                        </div>
-                        <div className="flex justify-between items-center text-sm">
-                          <span className="text-gray-600">BPJS Ketenagakerjaan</span>
-                          <span className="text-red-600 font-medium">-Rp {payroll?.deductions?.employmentInsurance || "0"}</span>
-                        </div>
-                        <div className="flex justify-between items-center text-sm">
-                          <span className="text-gray-600">PPh 21</span>
-                          <span className="text-red-600 font-medium">-Rp {payroll?.deductions?.incomeTax || "0"}</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="border-t border-gray-100 pt-3">
+                    <div className="bg-gradient-to-r from-green-100 to-green-200 rounded-xl p-6 border-2 border-green-300 shadow-lg">
                       <div className="flex justify-between items-center">
-                        <span className="text-sm font-medium text-gray-900">Take Home Pay</span>
-                        <span className="text-lg font-bold text-green-600">Rp {payroll?.netSalary || "0"}</span>
+                        <span className="text-lg font-bold text-green-800 flex items-center gap-2">
+                          <Wallet className="w-6 h-6" />
+                          Take Home Pay
+                        </span>
+                        <span className="text-2xl font-bold text-green-700">
+                          Rp {payroll?.netSalary?.toLocaleString("id-ID") || "0"}
+                        </span>
                       </div>
                     </div>
                   </div>
                 </CardContent>
               </Card>
 
-              {/* Zakat calculation - Modern card */}
-              <Card className="shadow-md hover:shadow-lg transition-shadow duration-300">
-                <CardHeader>
-                  <CardTitle>Perhitungan Zakat</CardTitle>
-                  <CardDescription>Berdasarkan total tabungan dan penghasilan</CardDescription>
+
+              <Card className="shadow-xl hover:shadow-2xl transition-all duration-300 border-2 border-amber-200">
+                <CardHeader className="bg-gradient-to-r from-amber-50 to-amber-100">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-gradient-to-r from-amber-500 to-amber-600 rounded-xl flex items-center justify-center">
+                      <Heart className="w-5 h-5 text-white" />
+                    </div>
+                    <div>
+                      <CardTitle className="text-amber-800">Perhitungan Zakat</CardTitle>
+                      <CardDescription className="text-amber-700">
+                        Berdasarkan total tabungan dan penghasilan
+                      </CardDescription>
+                    </div>
+                  </div>
                 </CardHeader>
-                <CardContent className="space-y-4">
+                <CardContent className="space-y-6">
+
+                  <div className="bg-gradient-to-r from-emerald-50 to-amber-50 rounded-xl p-4 border border-emerald-200">
+                    <p className="text-emerald-800 font-medium italic text-center mb-2">
+                      "وَأَقِيمُوا الصَّلَاةَ وَآتُوا الزَّكَاةَ"
+                    </p>
+                    <p className="text-emerald-600 text-sm text-center">
+                      "Dan dirikanlah shalat, tunaikanlah zakat" - QS. Al-Baqarah: 43
+                    </p>
+                  </div>
+
                   <div className="space-y-4">
-                    {/* Step 1: Calculation */}
-                    <div className="flex items-center gap-3 mb-2">
-                      <div className={`w-6 h-6 rounded-full flex items-center justify-center font-bold text-xs ${zakatPaid ? 'bg-green-500 text-white' : 'bg-indigo-500 text-white'}`}>1</div>
-                      <div className="flex-1">
-                        <span className="font-semibold">Perhitungan Zakat</span>
-                        <span className="block text-xs text-gray-500">(Otomatis dari gaji & tabungan)</span>
+                    <div className="flex items-center gap-4 p-4 bg-gradient-to-r from-emerald-50 to-emerald-100 rounded-xl border border-emerald-200">
+                      <div
+                        className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${zakatPaid ? "bg-green-500 text-white" : "bg-emerald-500 text-white"}`}
+                      >
+                        1
                       </div>
-                      <span className="text-xs font-semibold text-indigo-600">{payroll?.zakat?.toLocaleString("id-ID") || 0} IDR</span>
-                    </div>
-                    <div className="bg-gray-50 rounded-lg p-3 text-xs text-gray-700 mb-2">
-                      Nisab: <b>Rp {nisab.toLocaleString("id-ID")}</b> &bull; Tabungan: <b>Rp {yearToDateSavings.toLocaleString("id-ID")}</b> &bull; Zakat: <b>Rp {payroll?.zakat?.toLocaleString("id-ID") || 0}</b>
-                    </div>
-                    {/* Step 2: Payment */}
-                    <div className="flex items-center gap-3 mb-2">
-                      <div className={`w-6 h-6 rounded-full flex items-center justify-center font-bold text-xs ${zakatPaid ? 'bg-green-500 text-white' : zakatDue ? 'bg-yellow-400 text-white' : 'bg-gray-300 text-white'}`}>2</div>
                       <div className="flex-1">
-                        <span className="font-semibold">Pembayaran Zakat</span>
-                        <span className="block text-xs text-gray-500">{zakatPaid ? 'Selesai' : zakatDue ? 'Menunggu pembayaran' : 'Tidak wajib'}</span>
+                        <span className="font-bold text-emerald-800">Perhitungan Zakat</span>
+                        <span className="block text-sm text-emerald-600">(Otomatis dari gaji & tabungan)</span>
                       </div>
-                      {zakatPaid && <span className="text-xs font-semibold text-green-600">Completed</span>}
-                      {zakatDue && !zakatPaid && <span className="text-xs font-semibold text-yellow-600">Belum Dibayar</span>}
+                      <span className="text-lg font-bold text-emerald-700">
+                        Rp {payroll?.zakat?.toLocaleString("id-ID") || "0"}
+                      </span>
                     </div>
-                    {/* Payment Action */}
+
+                    <div className="bg-emerald-50 rounded-xl p-4 text-sm text-emerald-700 border border-emerald-200">
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
+                        <div>
+                          <p className="font-semibold">Nisab</p>
+                          <p className="font-bold text-emerald-800">Rp {nisab.toLocaleString("id-ID")}</p>
+                        </div>
+                        <div>
+                          <p className="font-semibold">Tabungan</p>
+                          <p className="font-bold text-emerald-800">Rp {yearToDateSavings.toLocaleString("id-ID")}</p>
+                        </div>
+                        <div>
+                          <p className="font-semibold">Zakat</p>
+                          <p className="font-bold text-emerald-800">
+                            Rp {payroll?.zakat?.toLocaleString("id-ID") || "0"}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-4 p-4 bg-gradient-to-r from-amber-50 to-amber-100 rounded-xl border border-amber-200">
+                      <div
+                        className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${zakatPaid ? "bg-green-500 text-white" : zakatDue ? "bg-amber-500 text-white" : "bg-gray-400 text-white"}`}
+                      >
+                        2
+                      </div>
+                      <div className="flex-1">
+                        <span className="font-bold text-amber-800">Pembayaran Zakat</span>
+                        <span className="block text-sm text-amber-600">
+                          {zakatPaid
+                            ? "Alhamdulillah, sudah terbayar"
+                            : zakatDue
+                              ? "Menunggu pembayaran"
+                              : "Tidak wajib saat ini"}
+                        </span>
+                      </div>
+                      {zakatPaid && (
+                        <Badge variant="success" className="font-bold">
+                          ✓ Selesai
+                        </Badge>
+                      )}
+                      {zakatDue && !zakatPaid && (
+                        <Badge variant="destructive" className="font-bold">
+                          Belum Dibayar
+                        </Badge>
+                      )}
+                    </div>
+
                     {zakatDue && !zakatPaid && (
-                      <div className="bg-yellow-50 rounded-lg p-4 flex flex-col gap-2 border border-yellow-200">
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Pilih Metode Pembayaran</label>
-                        <select
-                          className="w-full px-3 py-2 border rounded-lg"
-                          value={zakatPaymentMethod}
-                          onChange={e => setZakatPaymentMethod(e.target.value)}
-                          disabled={zakatPaying}
-                        >
-                          <option value="">-- Pilih Metode --</option>
-                          <option value="bank">Bank Transfer</option>
-                          <option value="ewallet">E-Wallet</option>
-                          <option value="cash">Cash</option>
-                        </select>
-                        <Button
-                          className="w-full mt-2"
-                          variant="primary"
-                          size="lg"
-                          onClick={handleSimulateZakatPayment}
-                          disabled={!zakatPaymentMethod || zakatPaying}
-                        >
-                          {zakatPaying ? "Memproses Pembayaran..." : "Bayar Zakat Sekarang"}
-                        </Button>
+                      <div className="bg-gradient-to-r from-amber-100 to-amber-200 rounded-xl p-6 border-2 border-amber-300 shadow-lg">
+                        <h4 className="font-bold text-amber-800 mb-4 text-center">Tunaikan Zakat Anda</h4>
+                        <div className="space-y-4">
+                          <div>
+                            <label className="block text-sm font-bold text-amber-800 mb-2">
+                              Pilih Metode Pembayaran
+                            </label>
+                            <select
+                              className="w-full px-4 py-3 border-2 border-amber-300 rounded-lg bg-white text-amber-800 font-medium focus:border-amber-500 focus:ring-2 focus:ring-amber-200"
+                              value={zakatPaymentMethod}
+                              onChange={(e) => setZakatPaymentMethod(e.target.value)}
+                              disabled={zakatPaying}
+                            >
+                              <option value="">-- Pilih Metode --</option>
+                              <option value="bank">Bank Transfer</option>
+                              <option value="ewallet">E-Wallet</option>
+                              <option value="cash">Cash</option>
+                            </select>
+                          </div>
+                          <Button
+                            className="w-full text-lg font-bold py-4"
+                            variant="primary"
+                            size="lg"
+                            onClick={handleSimulateZakatPayment}
+                            disabled={!zakatPaymentMethod || zakatPaying}
+                          >
+                            {zakatPaying ? "Memproses Pembayaran..." : "💰 Bayar Zakat Sekarang"}
+                          </Button>
+                        </div>
                       </div>
                     )}
+
                     {zakatPaid && (
-                      <div className="bg-green-50 rounded-lg p-4 flex items-center gap-3 border border-green-200 mt-2 animate-fadeIn">
-                        <CheckCircle2 className="text-green-500 w-6 h-6" />
-                        <span className="inline-block px-3 py-1 rounded-full text-sm font-bold bg-green-100 text-green-700">Pembayaran Zakat Selesai</span>
-                        <span className="text-sm text-green-700 font-semibold">Terima kasih telah menunaikan zakat! 🎉</span>
+                      <div className="bg-gradient-to-r from-green-100 to-green-200 rounded-xl p-6 border-2 border-green-300 shadow-lg animate-pulse">
+                        <div className="flex items-center justify-center gap-4">
+                          <CheckCircle2 className="text-green-600 w-8 h-8" />
+                          <div className="text-center">
+                            <p className="text-lg font-bold text-green-800">بارك الله فيك</p>
+                            <p className="text-green-700 font-semibold">Pembayaran Zakat Selesai! 🎉</p>
+                            <p className="text-sm text-green-600 mt-1">
+                              Semoga Allah menerima dan memberkahi zakat Anda
+                            </p>
+                          </div>
+                        </div>
                       </div>
                     )}
                   </div>
@@ -631,35 +789,57 @@ export default function KaryawanDashboard() {
               </Card>
             </div>
 
-            {/* Right sidebar - Calendar and events */}
-            <div className="space-y-5">
-              <Card className="shadow-md hover:shadow-lg transition-shadow duration-300">
+
+            <div className="space-y-6">
+              <Card className="shadow-xl hover:shadow-2xl transition-all duration-300">
                 <CardHeader>
-                  <CardTitle>Kalender</CardTitle>
-                  <CardDescription>Januari 2024</CardDescription>
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-purple-600 rounded-lg flex items-center justify-center">
+                      <CalendarIcon className="w-4 h-4 text-white" />
+                    </div>
+                    <div>
+                      <CardTitle>Kalender</CardTitle>
+                      <CardDescription>
+                        {new Date().toLocaleDateString("id-ID", { month: "long", year: "numeric" })}
+                      </CardDescription>
+                    </div>
+                  </div>
                 </CardHeader>
                 <CardContent className="p-0">
                   <Calendar selectedDate={selectedDate} onDateSelect={setSelectedDate} />
                 </CardContent>
               </Card>
 
-              <Card className="shadow-md hover:shadow-lg transition-shadow duration-300">
+              <Card className="shadow-xl hover:shadow-2xl transition-all duration-300">
                 <CardHeader>
-                  <CardTitle>Event Mendatang</CardTitle>
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg flex items-center justify-center">
+                      <Star className="w-4 h-4 text-white" />
+                    </div>
+                    <CardTitle>Event Mendatang</CardTitle>
+                  </div>
                 </CardHeader>
-                <CardContent className="space-y-3">
+                <CardContent className="space-y-4">
                   {events.map((event) => (
-                    <div key={event.date + '-' + event.title} className="flex items-start space-x-3 p-3 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors">
-                      <div className={`mt-1 flex-shrink-0 h-2 w-2 rounded-full ${
-                        event.type === 'meeting' ? 'bg-blue-500' : 
-                        event.type === 'training' ? 'bg-purple-500' : 
-                        'bg-green-500'
-                      }`}></div>
+                    <div
+                      key={event.date + "-" + event.title}
+                      className="flex items-start space-x-4 p-4 rounded-xl bg-gradient-to-r from-emerald-50 to-emerald-100 hover:from-emerald-100 hover:to-emerald-200 transition-all duration-200 border border-emerald-200 shadow-sm"
+                    >
+                      <div
+                        className={`mt-1 flex-shrink-0 h-3 w-3 rounded-full shadow-sm ${event.type === "meeting"
+                            ? "bg-blue-500"
+                            : event.type === "training"
+                              ? "bg-purple-500"
+                              : "bg-green-500"
+                          }`}
+                      ></div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-gray-900 truncate">{event.title}</p>
-                        <p className="text-xs text-gray-500">{new Date(event.date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}</p>
+                        <p className="text-sm font-bold text-emerald-800 truncate">{event.title}</p>
+                        <p className="text-xs text-emerald-600 font-medium">
+                          {new Date(event.date).toLocaleDateString("id-ID", { day: "numeric", month: "short" })}
+                        </p>
                       </div>
-                      <Badge variant="outline" className="text-xs capitalize">
+                      <Badge variant="outline" className="text-xs capitalize font-semibold">
                         {event.type}
                       </Badge>
                     </div>
@@ -667,33 +847,62 @@ export default function KaryawanDashboard() {
                 </CardContent>
               </Card>
 
-              <Card className="shadow-md hover:shadow-lg transition-shadow duration-300">
+              <Card className="shadow-xl hover:shadow-2xl transition-all duration-300">
                 <CardHeader>
-                  <CardTitle>Ringkasan Keuangan</CardTitle>
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 bg-gradient-to-r from-green-500 to-green-600 rounded-lg flex items-center justify-center">
+                      <PieChart className="w-4 h-4 text-white" />
+                    </div>
+                    <CardTitle>Ringkasan Keuangan</CardTitle>
+                  </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="space-y-3">
-                    <div className="flex justify-between items-center text-sm">
-                      <span className="text-gray-600">Gaji Rata-rata</span>
-                      <span className="font-medium">Rp {payroll?.netSalary || "0"}</span>
+                  <div className="space-y-4">
+                    <div className="flex justify-between items-center text-sm p-3 bg-emerald-50 rounded-lg border border-emerald-200">
+                      <span className="text-emerald-700 font-medium">Gaji Rata-rata</span>
+                      <span className="font-bold text-emerald-800">
+                        Rp {payroll?.netSalary?.toLocaleString("id-ID") || "0"}
+                      </span>
                     </div>
-                    <div className="flex justify-between items-center text-sm">
-                      <span className="text-gray-600">Total Bonus 2024</span>
-                      <span className="font-medium">Rp {payroll?.allowances?.other || "0"}</span>
+                    <div className="flex justify-between items-center text-sm p-3 bg-amber-50 rounded-lg border border-amber-200">
+                      <span className="text-amber-700 font-medium">Total Bonus 2024</span>
+                      <span className="font-bold text-amber-800">
+                        Rp {payroll?.allowances?.other?.toLocaleString("id-ID") || "0"}
+                      </span>
                     </div>
-                    <div className="flex justify-between items-center text-sm">
-                      <span className="text-gray-600">Zakat Terbayar</span>
-                      <span className="font-medium">Rp {payroll?.zakat || "0"}</span>
+                    <div className="flex justify-between items-center text-sm p-3 bg-green-50 rounded-lg border border-green-200">
+                      <span className="text-green-700 font-medium">Zakat Terbayar</span>
+                      <span className="font-bold text-green-800">
+                        Rp {zakatPaid ? payroll?.zakat?.toLocaleString("id-ID") : "0" || "0"}
+                      </span>
                     </div>
                   </div>
-                  <div className="border-t border-gray-100 pt-3">
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm font-medium text-gray-900">Proyeksi Tahun Ini</span>
-                      <span className="text-lg font-bold text-indigo-600">Rp {payroll?.netSalary * 12 || "0"}</span>
+                  <div className="border-t border-emerald-200 pt-4">
+                    <div className="bg-gradient-to-r from-emerald-100 to-emerald-200 rounded-lg p-4 border border-emerald-300">
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm font-bold text-emerald-800">Proyeksi Tahun Ini</span>
+                        <span className="text-xl font-bold text-emerald-700">
+                          Rp {((payroll?.netSalary || 0) * 12).toLocaleString("id-ID")}
+                        </span>
+                      </div>
                     </div>
                   </div>
                 </CardContent>
               </Card>
+
+
+              <div className="bg-gradient-to-r from-purple-50 to-purple-100 rounded-xl p-6 border border-purple-200 shadow-lg">
+                <div className="text-center">
+                  <div className="w-12 h-12 bg-gradient-to-r from-purple-500 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <Heart className="w-6 h-6 text-white" />
+                  </div>
+                  <p className="text-purple-800 font-medium italic mb-2">
+                    "Barangsiapa yang menghendaki kehidupan dunia dan perhiasannya, niscaya Kami berikan kepada mereka
+                    balasan pekerjaan mereka di dunia dengan sempurna"
+                  </p>
+                  <p className="text-purple-600 text-sm font-semibold">— QS. Hud: 15</p>
+                </div>
+              </div>
             </div>
           </div>
         </main>
