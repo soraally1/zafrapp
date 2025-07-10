@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { IoMdPerson, IoMdLogOut } from 'react-icons/io';
 import { useRouter } from "next/navigation";
@@ -11,10 +11,40 @@ interface TopbarProps {
   loading?: boolean;
 }
 
+// Add Islamic quotes/Quranic excerpts (Indonesian)
+const ISLAMIC_QUOTES = [
+  {
+    text: 'Berikan takaran dan timbangan dengan adil.',
+    source: 'QS. Al-An’am: 152',
+  },
+  {
+    text: 'Sesungguhnya Allah menyuruh kamu menyampaikan amanat kepada yang berhak menerimanya...',
+    source: 'QS. An-Nisa: 58',
+  },
+  {
+    text: 'Dan dirikanlah shalat, tunaikanlah zakat...',
+    source: 'QS. Al-Baqarah: 43',
+  },
+  {
+    text: 'Wahai orang-orang yang beriman! Janganlah kamu saling memakan harta sesamamu dengan jalan yang batil...',
+    source: 'QS. An-Nisa: 29',
+  },
+  {
+    text: 'Dan tolong-menolonglah kamu dalam (mengerjakan) kebajikan dan takwa...',
+    source: 'QS. Al-Ma’idah: 2',
+  },
+];
+
 export default function Topbar({ userName, userRole, userPhoto, loading = false }: TopbarProps) {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [imageError, setImageError] = useState(false);
   const router = useRouter();
+
+  // Pick a random quote only on the client to avoid hydration mismatch
+  const [quote, setQuote] = useState(ISLAMIC_QUOTES[0]);
+  useEffect(() => {
+    setQuote(ISLAMIC_QUOTES[Math.floor(Math.random() * ISLAMIC_QUOTES.length)]);
+  }, []);
 
   const handleLogout = async () => {
     const auth = getAuth();
@@ -37,6 +67,11 @@ export default function Topbar({ userName, userRole, userPhoto, loading = false 
         )}
         <span className="text-xs text-gray-400 font-medium">{userRole && `Role: ${userRole}`}</span>
         <span className="text-xs text-gray-400 font-medium">Selamat datang di ZAFRA Payroll & Keuangan Syariah</span>
+        {/* Islamic Quote */}
+        <div className="mt-2 bg-[#E6FFF4]/60 border-l-4 border-[#00C570] pl-3 pr-2 py-1 rounded text-xs italic text-gray-700 max-w-xs shadow-sm">
+          “{quote.text}”
+          <span className="block text-[10px] text-gray-400 text-right mt-0.5">{quote.source}</span>
+        </div>
       </div>
       <div className="flex items-center gap-4 relative">
         {/* User Avatar Dropdown */}

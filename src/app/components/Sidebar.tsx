@@ -2,17 +2,24 @@
 
 import Image from "next/image";
 import React from "react";
-import { LiaHomeSolid, LiaWalletSolid, LiaDonateSolid, LiaChartBarSolid, LiaUserSolid, LiaCogSolid } from "react-icons/lia";
+import { LiaHomeSolid, LiaWalletSolid, LiaDonateSolid, LiaChartBarSolid, LiaUserSolid, LiaRobotSolid } from "react-icons/lia";
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
-import { getAuth, signOut } from "firebase/auth";
+import { getAuth, signOut, onAuthStateChanged } from "firebase/auth";
+import { useEffect, useState } from "react";
+import { getUserProfile } from "../api/service/userProfileService";
 
 const menu = [
-  { label: "Dashboard", icon: <LiaHomeSolid size={24} />, path: "/dashboard/hr-keuangan" },
+  { label: "Dashboard HR", icon: <LiaHomeSolid size={24} />, path: "/dashboard/hr-keuangan" },
   { label: "Payroll", icon: <LiaWalletSolid size={24} />, path: "/dashboard/hr-keuangan/payroll" },
   { label: "Zakat", icon: <LiaDonateSolid size={24} />, path: "/dashboard/hr-keuangan/zakat" },
   { label: "Reports", icon: <LiaChartBarSolid size={24} />, path: "/dashboard/hr-keuangan/reports" },
   { label: "Employees", icon: <LiaUserSolid size={24} />, path: "/dashboard/hr-keuangan/karyawan" },
+  { label: "ZafraAI", icon: <LiaRobotSolid size={24} />, path: "/dashboard/hr-keuangan/ai-hr" },
+  // Karyawan Menu
+  { label: "Dashboard", icon: <LiaUserSolid size={24} />, path: "/dashboard/karyawan" },
+  // Mitra
+  { label: "Dashboard", icon: <LiaUserSolid size={24} />, path: "/dashboard/mitra" },
 ];
 
 interface SidebarProps {
@@ -22,6 +29,26 @@ interface SidebarProps {
 const Sidebar: React.FC<SidebarProps> = ({ active = "Dashboard" }) => {
   const router = useRouter();
   const pathname = usePathname();
+  const [userRole, setUserRole] = useState<string | null>(null);
+  const [loadingUser, setLoadingUser] = useState(true);
+
+  useEffect(() => {
+    const auth = getAuth();
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (user && user.uid) {
+        try {
+          const profile = await getUserProfile(user.uid);
+          setUserRole(profile?.role || null);
+        } catch {
+          setUserRole(null);
+        }
+      } else {
+        setUserRole(null);
+      }
+      setLoadingUser(false);
+    });
+    return () => unsubscribe();
+  }, []);
 
   const handleLogout = async () => {
     try {
@@ -33,13 +60,31 @@ const Sidebar: React.FC<SidebarProps> = ({ active = "Dashboard" }) => {
     }
   };
 
-  // Helper function to check if a menu item is active
   const isActive = (path: string) => {
     if (path === "/dashboard/hr-keuangan" && pathname === "/dashboard/hr-keuangan") {
       return true;
     }
     return pathname.startsWith(path) && path !== "/dashboard/hr-keuangan";
   };
+
+
+  const filteredMenu = menu.filter(item => {
+    if (userRole === "karyawan") {
+      return item.path === "/dashboard/karyawan";
+    }
+    if (userRole === "hr-keuangan") {
+      return item.path.startsWith("/dashboard/hr-keuangan");
+    }
+    if (userRole === "umkm-amil") {
+      return item.path === "/dashboard/mitra";
+    }
+    // Default: show all
+    return true;
+  });
+
+  if (loadingUser) {
+    return null; // or a loading spinner if you prefer
+  }
 
   return (
     <>
@@ -49,7 +94,7 @@ const Sidebar: React.FC<SidebarProps> = ({ active = "Dashboard" }) => {
           <Image src="/zafra.svg" alt="ZAFRA Logo" width={150} height={150} />
         </Link>
         <nav className="flex-1 flex flex-col gap-1">
-          {menu.map((item) => (
+          {filteredMenu.map((item) => (
             <Link
               key={item.label}
               href={item.path}
@@ -74,7 +119,7 @@ const Sidebar: React.FC<SidebarProps> = ({ active = "Dashboard" }) => {
       </aside>
       {/* Mobile Bottom Bar */}
       <nav className="fixed bottom-0 left-0 right-0 z-50 flex md:hidden bg-white border-t border-gray-200 h-16 justify-around items-center">
-        {menu.map((item) => (
+        {filteredMenu.map((item) => (
           <Link
             key={item.label}
             href={item.path}

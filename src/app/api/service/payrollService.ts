@@ -3,6 +3,10 @@ import { doc, getDoc, setDoc, updateDoc, collection, query, where, getDocs, Time
 import { getAllUsers } from "./firebaseUserService";
 import { getUserProfile } from "./userProfileService";
 
+export const GOLD_PRICE_PER_GRAM = 1200000; // Example: 1,200,000 IDR/gram (update as needed or fetch from API)
+export const NISAB_GRAM = 85;
+export const NISAB = GOLD_PRICE_PER_GRAM * NISAB_GRAM;
+
 export interface PayrollData {
   id?: string;
   userId: string;
@@ -30,12 +34,12 @@ export interface PayrollData {
   paymentDate?: string;
   createdAt: string;
   updatedAt: string;
+  zakatPaid: boolean;
 }
 
 // Calculate zakat (2.5% of eligible amount if above nisab)
 const calculateZakat = (totalIncome: number) => {
-  const nisab = 5000000; // Example nisab value in IDR
-  if (totalIncome >= nisab) {
+  if (totalIncome >= NISAB) {
     return totalIncome * 0.025; // 2.5% zakat rate
   }
   return 0;
@@ -65,12 +69,25 @@ export async function createOrUpdatePayroll(userId: string, payrollData: Partial
     const zakat = calculateZakat(totalIncome);
     const netSalary = totalIncome - totalDeductions - zakat;
 
+    let zakatPaid = payrollData.zakatPaid;
+    if (payrollSnap.exists()) {
+      // Preserve zakatPaid if already set, unless explicitly set in update
+      const existing = payrollSnap.data();
+      if (typeof zakatPaid !== 'boolean') {
+        zakatPaid = typeof existing.zakatPaid === 'boolean' ? existing.zakatPaid : false;
+      }
+    } else {
+      // On creation, default to false if not set
+      if (typeof zakatPaid !== 'boolean') zakatPaid = false;
+    }
+
     const updatedPayrollData = {
       ...payrollData,
       totalAllowances,
       totalDeductions,
       zakat,
       netSalary,
+      zakatPaid,
       updatedAt: now,
     };
 
@@ -165,6 +182,7 @@ export async function generateMonthlyPayroll(month: string) {
             status: "Pending",
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
+            zakatPaid: false, // Always set zakatPaid on creation
           });
         }
       }
@@ -228,5 +246,31 @@ export async function getAllPayrollUsersWithProfile(month: string) {
   } catch (error) {
     console.error("Error fetching payroll users with profile:", error);
     return { success: false, error };
+  }
+} 
+
+export async function getAllPayrolls() {
+  try {
+    const payrollsRef = collection(db, "payrolls");
+    const querySnapshot = await getDocs(payrollsRef);
+    const payrolls: PayrollData[] = [];
+    querySnapshot.forEach((doc) => {
+      payrolls.push({ id: doc.id, ...doc.data() } as PayrollData);
+    });
+    return { success: true, data: payrolls };
+  } catch (error) {
+    console.error("Error fetching all payrolls:", error);
+    return { success: false, error };
+  }
+} 
+
+// Mark zakat as paid for a payroll
+export async function markZakatPaid(payrollId: string): Promise<boolean> {
+  try {
+    await updateDoc(doc(db, "payrolls", payrollId), { zakatPaid: true });
+    return true;
+  } catch (e) {
+    console.error("Failed to mark zakat as paid:", e);
+    return false;
   }
 } 

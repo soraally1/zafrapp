@@ -2,27 +2,28 @@
 
 import { useState, useRef, useEffect } from "react"
 import {
-  Bell,
   CalendarIcon,
   DollarSign,
   Home,
-  LogOut,
 
   Settings,
   TrendingUp,
-  User,
   Wallet,
-  X,
   ChevronLeft,
   ChevronRight,
   FileText,
   PieChart,
   Gift,
   Shield,
+  CheckCircle2,
 } from "lucide-react"
-import Image from "next/image"
 import Sidebar from "../../components/Sidebar"
 import type React from "react"
+import Topbar from "../../components/Topbar";
+import { getAuth, onAuthStateChanged } from "firebase/auth";
+import { getUserProfile } from "@/app/api/service/userProfileService";
+import { getUserPayroll, markZakatPaid } from "@/app/api/service/payrollService";
+import { useRouter } from "next/navigation";
 
 // Updated Button Component with modern styling
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
@@ -318,21 +319,75 @@ function Calendar({ selectedDate, onDateSelect }: CalendarProps) {
 // Main Dashboard Component with modern redesign
 export default function KaryawanDashboard() {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date())
-  const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [userName, setUserName] = useState("");
+  const [userRole, setUserRole] = useState("");
+  const [userPhoto, setUserPhoto] = useState<string | undefined>(undefined);
+  const [loadingUser, setLoadingUser] = useState(true);
+  const [payroll, setPayroll] = useState<any>(null);
+  const [payrollLoading, setPayrollLoading] = useState(true);
+  const router = useRouter();
+  const [zakatPaymentMethod, setZakatPaymentMethod] = useState("");
+  const [zakatPaying, setZakatPaying] = useState(false);
 
-  // Sample data
-  const salaryData = {
-    currentMonth: 8500000,
-    lastMonth: 8200000,
-    yearToDate: 95000000,
-    bonus: 1500000,
-  }
+  useEffect(() => {
+    const auth = getAuth();
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (user && user.uid) {
+        try {
+          const profile = await getUserProfile(user.uid);
+          setUserName(profile?.name || "");
+          setUserRole(profile?.role || "");
+          setUserPhoto(profile?.photo);
+        } catch {
+          setUserName("");
+          setUserRole("");
+          setUserPhoto(undefined);
+        }
+      } else {
+        setUserName("");
+        setUserRole("");
+        setUserPhoto(undefined);
+      }
+      setLoadingUser(false);
+    });
+    return () => unsubscribe();
+  }, []);
 
-  const zakatData = {
-    nisab: 85000000,
-    currentSavings: 120000000,
-    zakatAmount: 3000000,
-    zakatDue: true,
+  // Add a helper to fetch payroll
+  const fetchPayroll = async (userId: string, month: string) => {
+    setPayrollLoading(true);
+    try {
+      const res = await getUserPayroll(userId, month);
+      if (res.success) {
+        setPayroll(res.data);
+      } else {
+        // Removed unused setPayrollError
+      }
+    } catch {
+      // Removed unused setPayrollError
+    } finally {
+      setPayrollLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!userName || !userRole || loadingUser) return;
+    const now = new Date();
+    const month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+    const auth = getAuth();
+    const user = auth.currentUser;
+    if (!user) return;
+    fetchPayroll(user.uid, month);
+  }, [userName, userRole, loadingUser]);
+
+  useEffect(() => {
+    if (!loadingUser && userRole && userRole !== "karyawan") {
+      router.push("/login");
+    }
+  }, [loadingUser, userRole, router]);
+
+  if (loadingUser || (!userRole && !payrollLoading)) {
+    return null; // or a spinner
   }
 
   const events = [
@@ -341,14 +396,48 @@ export default function KaryawanDashboard() {
     { date: "2024-01-25", title: "Gajian", type: "salary" },
   ]
 
-  const sidebarItems = [
-    { icon: Home, label: "Dashboard", active: true },
-    { icon: Wallet, label: "Gaji & Tunjangan" },
-    { icon: FileText, label: "Slip Gaji" },
-    { icon: CalendarIcon, label: "Kalender" },
-    { icon: PieChart, label: "Laporan" },
-    { icon: Settings, label: "Pengaturan" },
-  ]
+  // Handler to mark zakat as paid
+  const handleMarkZakatPaid = async () => {
+    if (!payroll?.id) return;
+    // Removed unused setZakatUpdating
+    try {
+      const auth = getAuth();
+      const user = auth.currentUser;
+      if (!user) return;
+      const now = new Date();
+      const month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+      const success = await markZakatPaid(payroll.id);
+      if (success) {
+        setPayroll((prev: any) => ({ ...prev, zakatPaid: true }));
+        await fetchPayroll(user.uid, month);
+      } else {
+        alert("Gagal memperbarui status zakat. Silakan coba lagi.");
+      }
+    } catch (e) {
+      alert("Terjadi kesalahan saat memperbarui status zakat.");
+    } finally {
+      // Removed unused setZakatUpdating
+    }
+  };
+
+  // Handler to simulate zakat payment
+  const handleSimulateZakatPayment = async () => {
+    setZakatPaying(true);
+    setTimeout(async () => {
+      await handleMarkZakatPaid();
+      setZakatPaying(false);
+    }, 1500); // Simulate payment processing
+  };
+ 
+  const GOLD_PRICE_PER_GRAM = 1350000; 
+  const NISAB_GRAM = 85;
+  const nisab = GOLD_PRICE_PER_GRAM * NISAB_GRAM;
+  const currentMonth = new Date().getMonth() + 1;
+  const yearToDateSavings = payroll?.netSalary ? payroll.netSalary * currentMonth : 0;
+
+  // Defensive fallback for zakatPaid
+  const zakatPaid = payroll?.zakatPaid === true;
+  const zakatDue = payroll?.zakat > 0 && !zakatPaid;
 
   return (
     <div className="min-h-screen flex bg-gray-50">
@@ -357,79 +446,10 @@ export default function KaryawanDashboard() {
 
       {/* Main content */}
       <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Header - Modern redesign */}
-        <header className="bg-white shadow-xs border-b border-gray-100">
-          <div className="flex items-center justify-between h-16 px-6">
-            <div className="flex items-center space-x-4">
-              <div>
-                <h1 className="text-lg font-semibold text-gray-900">Dashboard Karyawan</h1>
-                <p className="text-xs text-gray-500">Selamat datang kembali, Ahmad Rizki</p>
-              </div>
-            </div>
-
-            <div className="flex items-center space-x-3">
-              <div className="relative">
-                <Button variant="ghost" size="icon">
-                  <Bell className="h-5 w-5 text-gray-500" />
-                </Button>
-                <Badge className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs">
-                  3
-                </Badge>
-              </div>
-
-              <Dropdown
-                align="right"
-                trigger={
-                  <Button variant="ghost" className="relative h-8 w-8 rounded-full p-0">
-                    <Image
-                      src="/placeholder.svg?height=32&width=32"
-                      alt="Profile"
-                      width={32}
-                      height={32}
-                      className="rounded-full border border-gray-200"
-                    />
-                  </Button>
-                }
-              >
-                <div className="px-4 py-3 border-b border-gray-100">
-                  <p className="font-medium text-sm">Ahmad Rizki</p>
-                  <p className="text-xs text-gray-500">ahmad.rizki@company.com</p>
-                </div>
-                <DropdownItem>
-                  <User className="mr-2 h-4 w-4" />
-                  Profil
-                </DropdownItem>
-                <DropdownItem>
-                  <Settings className="mr-2 h-4 w-4" />
-                  Pengaturan
-                </DropdownItem>
-                <div className="border-t border-gray-100 my-1"></div>
-                <DropdownItem className="text-red-600">
-                  <LogOut className="mr-2 h-4 w-4" />
-                  Keluar
-                </DropdownItem>
-              </Dropdown>
-            </div>
-          </div>
-        </header>
-
+        {/* Topbar */}
+        <Topbar userName={userName} userRole={userRole} userPhoto={userPhoto} loading={loadingUser} />
         {/* Dashboard content */}
         <main className="flex-1 overflow-y-auto p-6">
-          {/* Greeting and quick actions */}
-          <div className="mb-6 flex justify-between items-center">
-            <div>
-              <h2 className="text-xl font-semibold text-gray-900 mb-2">Halo, Ahmad Rizki!</h2>
-              <p className="text-gray-500 text-sm">Berikut ringkasan informasi gaji dan keuangan Anda.</p>
-            </div>
-            <div className="flex space-x-2">
-              <Button variant="secondary" className="shadow-sm">
-                <FileText className="mr-2 h-4 w-4" /> Lihat Slip Gaji
-              </Button>
-              <Button variant="primary" className="shadow-sm">
-                <DollarSign className="mr-2 h-4 w-4" /> Ajukan Pinjaman
-              </Button>
-            </div>
-          </div>
 
           {/* Salary overview cards - Modern grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
@@ -439,7 +459,7 @@ export default function KaryawanDashboard() {
                 <DollarSign className="h-4 w-4 text-indigo-500" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-gray-900">Rp {salaryData.currentMonth.toLocaleString("id-ID")}</div>
+                <div className="text-2xl font-bold text-gray-900">Rp {payroll?.netSalary?.toLocaleString("id-ID") || "0"}</div>
                 <p className="text-xs text-gray-500 mt-1">+3.7% dari bulan lalu</p>
               </CardContent>
             </Card>
@@ -450,7 +470,7 @@ export default function KaryawanDashboard() {
                 <TrendingUp className="h-4 w-4 text-gray-500" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-gray-900">Rp {salaryData.yearToDate.toLocaleString("id-ID")}</div>
+                <div className="text-2xl font-bold text-gray-900">Rp {payroll?.netSalary * (new Date().getMonth() + 1) || "0"}</div>
                 <p className="text-xs text-gray-500 mt-1">11 bulan kerja</p>
               </CardContent>
             </Card>
@@ -461,7 +481,7 @@ export default function KaryawanDashboard() {
                 <Gift className="h-4 w-4 text-gray-500" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-gray-900">Rp {salaryData.bonus.toLocaleString("id-ID")}</div>
+                <div className="text-2xl font-bold text-gray-900">Rp {payroll?.allowances?.other || "0"}</div>
                 <p className="text-xs text-gray-500 mt-1">Bonus kinerja Q4</p>
               </CardContent>
             </Card>
@@ -472,9 +492,9 @@ export default function KaryawanDashboard() {
                 <Shield className="h-4 w-4 text-gray-500" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-gray-900">Rp {zakatData.zakatAmount.toLocaleString("id-ID")}</div>
-                <Badge variant={zakatData.zakatDue ? "destructive" : "secondary"} className="mt-1">
-                  {zakatData.zakatDue ? "Wajib Zakat" : "Belum Wajib"}
+                <div className="text-2xl font-bold text-gray-900">Rp {payroll?.zakat || "0"}</div>
+                <Badge variant={payroll?.zakat > 0 ? "destructive" : "secondary"} className="mt-1">
+                  {payroll?.zakat > 0 ? "Wajib Zakat" : "Belum Wajib"}
                 </Badge>
               </CardContent>
             </Card>
@@ -495,15 +515,15 @@ export default function KaryawanDashboard() {
                       <div className="space-y-2">
                         <div className="flex justify-between items-center text-sm">
                           <span className="text-gray-600">Gaji Pokok</span>
-                          <span className="font-medium">Rp 6.500.000</span>
+                          <span className="font-medium">Rp {payroll?.basicSalary || "0"}</span>
                         </div>
                         <div className="flex justify-between items-center text-sm">
                           <span className="text-gray-600">Tunjangan Jabatan</span>
-                          <span className="font-medium">Rp 1.500.000</span>
+                          <span className="font-medium">Rp {payroll?.allowances?.positionAllowance || "0"}</span>
                         </div>
                         <div className="flex justify-between items-center text-sm">
                           <span className="text-gray-600">Tunjangan Transport</span>
-                          <span className="font-medium">Rp 500.000</span>
+                          <span className="font-medium">Rp {payroll?.allowances?.transportAllowance || "0"}</span>
                         </div>
                       </div>
                     </div>
@@ -511,7 +531,7 @@ export default function KaryawanDashboard() {
                     <div className="border-t border-gray-100 pt-3">
                       <div className="flex justify-between items-center text-sm font-medium">
                         <span>Total Pendapatan</span>
-                        <span>Rp 8.500.000</span>
+                        <span>Rp {payroll?.totalEarnings || "0"}</span>
                       </div>
                     </div>
 
@@ -520,15 +540,15 @@ export default function KaryawanDashboard() {
                       <div className="space-y-2">
                         <div className="flex justify-between items-center text-sm">
                           <span className="text-gray-600">BPJS Kesehatan</span>
-                          <span className="text-red-600 font-medium">-Rp 85.000</span>
+                          <span className="text-red-600 font-medium">-Rp {payroll?.deductions?.healthInsurance || "0"}</span>
                         </div>
                         <div className="flex justify-between items-center text-sm">
                           <span className="text-gray-600">BPJS Ketenagakerjaan</span>
-                          <span className="text-red-600 font-medium">-Rp 170.000</span>
+                          <span className="text-red-600 font-medium">-Rp {payroll?.deductions?.employmentInsurance || "0"}</span>
                         </div>
                         <div className="flex justify-between items-center text-sm">
                           <span className="text-gray-600">PPh 21</span>
-                          <span className="text-red-600 font-medium">-Rp 425.000</span>
+                          <span className="text-red-600 font-medium">-Rp {payroll?.deductions?.incomeTax || "0"}</span>
                         </div>
                       </div>
                     </div>
@@ -536,7 +556,7 @@ export default function KaryawanDashboard() {
                     <div className="border-t border-gray-100 pt-3">
                       <div className="flex justify-between items-center">
                         <span className="text-sm font-medium text-gray-900">Take Home Pay</span>
-                        <span className="text-lg font-bold text-green-600">Rp 7.820.000</span>
+                        <span className="text-lg font-bold text-green-600">Rp {payroll?.netSalary || "0"}</span>
                       </div>
                     </div>
                   </div>
@@ -551,39 +571,61 @@ export default function KaryawanDashboard() {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="space-y-4">
-                    <div className="space-y-2">
-                      <div className="flex justify-between items-center text-sm">
-                        <span className="text-gray-600">Nisab (85 gram emas)</span>
-                        <span className="font-medium">Rp {zakatData.nisab.toLocaleString("id-ID")}</span>
+                    {/* Step 1: Calculation */}
+                    <div className="flex items-center gap-3 mb-2">
+                      <div className={`w-6 h-6 rounded-full flex items-center justify-center font-bold text-xs ${zakatPaid ? 'bg-green-500 text-white' : 'bg-indigo-500 text-white'}`}>1</div>
+                      <div className="flex-1">
+                        <span className="font-semibold">Perhitungan Zakat</span>
+                        <span className="block text-xs text-gray-500">(Otomatis dari gaji & tabungan)</span>
                       </div>
-                      <div className="flex justify-between items-center text-sm">
-                        <span className="text-gray-600">Total Tabungan</span>
-                        <span className="font-medium">Rp {zakatData.currentSavings.toLocaleString("id-ID")}</span>
-                      </div>
+                      <span className="text-xs font-semibold text-indigo-600">{payroll?.zakat?.toLocaleString("id-ID") || 0} IDR</span>
                     </div>
-
-                    <div className="space-y-2">
-                      <div className="flex justify-between text-xs text-gray-500 mb-1">
-                        <span>Progress ke Nisab</span>
-                        <span>{Math.round((zakatData.currentSavings / zakatData.nisab) * 100)}%</span>
-                      </div>
-                      <Progress value={(zakatData.currentSavings / zakatData.nisab) * 100} />
+                    <div className="bg-gray-50 rounded-lg p-3 text-xs text-gray-700 mb-2">
+                      Nisab: <b>Rp {nisab.toLocaleString("id-ID")}</b> &bull; Tabungan: <b>Rp {yearToDateSavings.toLocaleString("id-ID")}</b> &bull; Zakat: <b>Rp {payroll?.zakat?.toLocaleString("id-ID") || 0}</b>
                     </div>
-
-                    <div className="border-t border-gray-100 pt-3">
-                      <div className="flex justify-between items-center text-sm font-medium">
-                        <span>Zakat Wajib (2.5%)</span>
-                        <span className="text-green-600">Rp {zakatData.zakatAmount.toLocaleString("id-ID")}</span>
+                    {/* Step 2: Payment */}
+                    <div className="flex items-center gap-3 mb-2">
+                      <div className={`w-6 h-6 rounded-full flex items-center justify-center font-bold text-xs ${zakatPaid ? 'bg-green-500 text-white' : zakatDue ? 'bg-yellow-400 text-white' : 'bg-gray-300 text-white'}`}>2</div>
+                      <div className="flex-1">
+                        <span className="font-semibold">Pembayaran Zakat</span>
+                        <span className="block text-xs text-gray-500">{zakatPaid ? 'Selesai' : zakatDue ? 'Menunggu pembayaran' : 'Tidak wajib'}</span>
                       </div>
+                      {zakatPaid && <span className="text-xs font-semibold text-green-600">Completed</span>}
+                      {zakatDue && !zakatPaid && <span className="text-xs font-semibold text-yellow-600">Belum Dibayar</span>}
                     </div>
-
-                    <Button 
-                      className="w-full" 
-                      variant={zakatData.zakatDue ? "primary" : "secondary"}
-                      size="lg"
-                    >
-                      {zakatData.zakatDue ? "Bayar Zakat Sekarang" : "Belum Wajib Zakat"}
-                    </Button>
+                    {/* Payment Action */}
+                    {zakatDue && !zakatPaid && (
+                      <div className="bg-yellow-50 rounded-lg p-4 flex flex-col gap-2 border border-yellow-200">
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Pilih Metode Pembayaran</label>
+                        <select
+                          className="w-full px-3 py-2 border rounded-lg"
+                          value={zakatPaymentMethod}
+                          onChange={e => setZakatPaymentMethod(e.target.value)}
+                          disabled={zakatPaying}
+                        >
+                          <option value="">-- Pilih Metode --</option>
+                          <option value="bank">Bank Transfer</option>
+                          <option value="ewallet">E-Wallet</option>
+                          <option value="cash">Cash</option>
+                        </select>
+                        <Button
+                          className="w-full mt-2"
+                          variant="primary"
+                          size="lg"
+                          onClick={handleSimulateZakatPayment}
+                          disabled={!zakatPaymentMethod || zakatPaying}
+                        >
+                          {zakatPaying ? "Memproses Pembayaran..." : "Bayar Zakat Sekarang"}
+                        </Button>
+                      </div>
+                    )}
+                    {zakatPaid && (
+                      <div className="bg-green-50 rounded-lg p-4 flex items-center gap-3 border border-green-200 mt-2 animate-fadeIn">
+                        <CheckCircle2 className="text-green-500 w-6 h-6" />
+                        <span className="inline-block px-3 py-1 rounded-full text-sm font-bold bg-green-100 text-green-700">Pembayaran Zakat Selesai</span>
+                        <span className="text-sm text-green-700 font-semibold">Terima kasih telah menunaikan zakat! 🎉</span>
+                      </div>
+                    )}
                   </div>
                 </CardContent>
               </Card>
@@ -606,8 +648,8 @@ export default function KaryawanDashboard() {
                   <CardTitle>Event Mendatang</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  {events.map((event, index) => (
-                    <div key={index} className="flex items-start space-x-3 p-3 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors">
+                  {events.map((event) => (
+                    <div key={event.date + '-' + event.title} className="flex items-start space-x-3 p-3 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors">
                       <div className={`mt-1 flex-shrink-0 h-2 w-2 rounded-full ${
                         event.type === 'meeting' ? 'bg-blue-500' : 
                         event.type === 'training' ? 'bg-purple-500' : 
@@ -633,21 +675,21 @@ export default function KaryawanDashboard() {
                   <div className="space-y-3">
                     <div className="flex justify-between items-center text-sm">
                       <span className="text-gray-600">Gaji Rata-rata</span>
-                      <span className="font-medium">Rp 8.200.000</span>
+                      <span className="font-medium">Rp {payroll?.netSalary || "0"}</span>
                     </div>
                     <div className="flex justify-between items-center text-sm">
                       <span className="text-gray-600">Total Bonus 2024</span>
-                      <span className="font-medium">Rp 4.500.000</span>
+                      <span className="font-medium">Rp {payroll?.allowances?.other || "0"}</span>
                     </div>
                     <div className="flex justify-between items-center text-sm">
                       <span className="text-gray-600">Zakat Terbayar</span>
-                      <span className="font-medium">Rp 2.100.000</span>
+                      <span className="font-medium">Rp {payroll?.zakat || "0"}</span>
                     </div>
                   </div>
                   <div className="border-t border-gray-100 pt-3">
                     <div className="flex justify-between items-center">
                       <span className="text-sm font-medium text-gray-900">Proyeksi Tahun Ini</span>
-                      <span className="text-lg font-bold text-indigo-600">Rp 105.000.000</span>
+                      <span className="text-lg font-bold text-indigo-600">Rp {payroll?.netSalary * 12 || "0"}</span>
                     </div>
                   </div>
                 </CardContent>

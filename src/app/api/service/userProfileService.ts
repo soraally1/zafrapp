@@ -1,5 +1,5 @@
 import { db } from "@/lib/firebaseApi";
-import { doc, getDoc, setDoc, updateDoc } from "firebase/firestore";
+import { doc, getDoc, setDoc, updateDoc, collection, getDocs } from "firebase/firestore";
 
 interface UserProfile {
   id?: string;
@@ -107,5 +107,21 @@ export async function updateUserHeaderPhoto(uid: string, headerPhotoUrl: string)
   } catch (error) {
     console.error("Error updating header photo:", error);
     return { success: false, error };
+  }
+}
+
+// New: Fetch all user profiles
+export async function getAllUserProfiles() {
+  try {
+    const usersRef = collection(db, "users");
+    const querySnapshot = await getDocs(usersRef);
+    const profiles: UserProfile[] = [];
+    querySnapshot.forEach((doc) => {
+      profiles.push({ id: doc.id, ...doc.data() } as UserProfile);
+    });
+    return profiles;
+  } catch (error) {
+    console.error("Error fetching all user profiles:", error);
+    return [];
   }
 } 
