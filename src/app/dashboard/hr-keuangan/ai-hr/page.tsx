@@ -4,10 +4,12 @@ import { useState, useEffect } from "react";
 import { format } from "date-fns";
 import Sidebar from "../../../components/Sidebar";
 import Topbar from "../../../components/Topbar";
-import { getAuth, onAuthStateChanged, signOut } from "firebase/auth";
+import { onAuthStateChanged, signOut } from "firebase/auth";
+import { auth } from "@/lib/firebaseApi"; // Import the initialized auth instance
 // @ts-ignore: import path may be valid in project
-import { getUserProfile } from "../../../api/service/userProfileService";
+// import { getUserProfile } from "../../../api/service/userProfileService"; // This is the problematic import
 import { useRouter } from "next/navigation";
+import ReactMarkdown from "react-markdown";
 
 export default function AIHRPage() {
   const [messages, setMessages] = useState([
@@ -29,19 +31,34 @@ export default function AIHRPage() {
 
   // Auth and fetch real user profile (like dashboard)
   useEffect(() => {
-    const auth = getAuth();
+    // const auth = getAuth(); // No longer need to call this
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      if (user && user.uid) {
+      if (user) {
         setLoadingUser(true);
-        const profile = await getUserProfile(user.uid);
-        if (!profile || profile.role !== "hr-keuangan") {
-          // Not authorized, sign out and redirect
+        try {
+          const token = await user.getIdToken();
+          const response = await fetch('/api/profile', {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+
+          if (!response.ok) {
+            throw new Error('Failed to fetch profile');
+          }
+
+          const profile = await response.json();
+          if (!profile || profile.role !== "hr-keuangan") {
+            await signOut(auth);
+            router.push("/login");
+            return;
+          }
+          setUserData({ ...profile, uid: user.uid });
+        } catch (error) {
+          console.error("Auth error, signing out: ", error);
           await signOut(auth);
           router.push("/login");
-          return;
+        } finally {
+          setLoadingUser(false);
         }
-        setUserData({ ...profile, uid: user.uid });
-        setLoadingUser(false);
       } else {
         setLoadingUser(false);
         router.push("/login");
@@ -50,34 +67,45 @@ export default function AIHRPage() {
     return () => unsubscribe();
   }, [router]);
 
-  async function fetchContextData() {
-    const res = await fetch('/api/hr-data');
-    if (!res.ok) throw new Error('Gagal mengambil data HR');
-    return await res.json();
-  }
+  // This function is no longer needed.
+  // async function fetchContextData() {
+  //   const res = await fetch('/api/hr-data');
+  //   if (!res.ok) throw new Error('Gagal mengambil data HR');
+  //   return await res.json();
+  // }
 
   async function handleAsk(question: string) {
-    setMessages(msgs => [...msgs, { role: "user", text: question }]);
+    // 1. Construct the new history that will be sent to the API.
+    const userMessage = { role: "user", text: question };
+    const newHistory = [...messages, userMessage];
+
+    // 2. Optimistically update the UI so the user sees their message immediately.
+    setMessages(newHistory);
+    setInput("");
     setLoading(true);
-    let answer = "Maaf, terjadi kesalahan.";
+
     try {
-      const context = await fetchContextData();
+      // 3. Call the API with the new, complete history.
       const res = await fetch("/api/gemini", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ question, context }),
+        body: JSON.stringify({ history: newHistory }),
       });
+
       const data = await res.json();
-      if (res.ok && data.answer) {
-        answer = data.answer;
-      } else {
-        answer = data.error || "Maaf, AI tidak dapat menjawab saat ini.";
-      }
-    } catch (err: any) {
-      answer = err.message || "Maaf, terjadi error.";
+      const answer = (res.ok && data.answer) 
+        ? data.answer 
+        : (data.error || "Maaf, AI tidak dapat menjawab saat ini.");
+      
+      // 4. Update the UI with the AI's response.
+      setMessages(prev => [...prev, { role: "ai", text: answer }]);
+
+    } catch (error: any) {
+        const errorMessage = { role: 'ai', text: error.message || "Terjadi kesalahan." };
+        setMessages(prev => [...prev, errorMessage]);
+    } finally {
+        setLoading(false);
     }
-    setMessages(msgs => [...msgs, { role: "ai", text: answer }]);
-    setLoading(false);
   }
 
   return (
@@ -106,13 +134,13 @@ export default function AIHRPage() {
               {messages.map((msg, i) => (
                 <div key={i} className={`flex ${msg.role === "ai" ? "justify-start" : "justify-end"}`}>
                   <div className={`px-3 py-2 rounded-lg max-w-[80%] text-sm ${msg.role === "ai" ? "bg-[#E6FFF4] text-gray-800" : "bg-[#00C570] text-white"}`}>
-                    {msg.text}
+                    {msg.role === 'ai' ? <ReactMarkdown>{msg.text}</ReactMarkdown> : msg.text}
                   </div>
                 </div>
               ))}
               {loading && <div className="text-xs text-gray-400">AI sedang memproses...</div>}
             </div>
-            <form className="flex gap-2 mt-2" onSubmit={e => { e.preventDefault(); if (input.trim()) { handleAsk(input.trim()); setInput(""); } }}>
+            <form className="flex gap-2 mt-2" onSubmit={e => { e.preventDefault(); if (input.trim()) { handleAsk(input.trim()); } }}>
               <input
                 className="flex-1 border rounded-xl px-3 py-2 text-sm focus:outline-[#00C570]"
                 placeholder="Tulis pertanyaan Anda..."

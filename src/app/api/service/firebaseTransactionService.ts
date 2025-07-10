@@ -25,9 +25,15 @@ export async function addTransaction(data: Transaction) {
     }
 }
 
-export async function getAllTransactions() {
+export async function getAllTransactions(limit?: number) {
     try {
-        const snapshot = await firestore.collection('transactionReports').get();
+        let query: FirebaseFirestore.Query<FirebaseFirestore.DocumentData> = firestore.collection('transactionReports').orderBy('createdAt', 'desc');
+
+        if (limit) {
+            query = query.limit(limit);
+        }
+
+        const snapshot = await query.get();
         return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     } catch (error) {
         console.error('Error fetching transactions:', error);

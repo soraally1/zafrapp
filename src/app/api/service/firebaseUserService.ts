@@ -1,8 +1,5 @@
 import { registerWithEmail, loginWithEmail, saveUserToFirestore, saveMitraData } from "@/lib/firebaseApi";
-import { getFirestore, doc, getDoc, deleteDoc, updateDoc } from "firebase/firestore";
-import { collection, query, where, getDocs } from "firebase/firestore";
-
-const db = getFirestore();
+import { firestore as db } from "@/lib/firebaseAdmin";
 
 interface User {
   id: string;
@@ -44,12 +41,15 @@ export async function loginUser({ email, password }: { email: string, password: 
     if (!user?.email) throw new Error("User email not found after login.");
     
     // Get user data from Firestore
-    const userDoc = await getDoc(doc(db, "users", user.uid));
-    if (!userDoc.exists()) {
+    const userDoc = await db.collection("users").doc(user.uid).get();
+    if (!userDoc.exists) {
       throw new Error("User data not found in database.");
     }
     
     const userData = userDoc.data();
+    if (!userData) {
+      throw new Error("User data not found in database.");
+    }
     return { success: true, email: user.email, role: userData.role };
   } catch (err: any) {
     return { success: false, error: err?.message || "Login failed" };
@@ -59,9 +59,9 @@ export async function loginUser({ email, password }: { email: string, password: 
 export async function getUser(email: string) {
   try {
     // Query users collection to find user by email
-    const usersRef = collection(db, "users");
-    const q = query(usersRef, where("email", "==", email));
-    const querySnapshot = await getDocs(q);
+    const usersRef = db.collection("users");
+    const q = usersRef.where("email", "==", email);
+    const querySnapshot = await q.get();
     
     if (querySnapshot.empty) {
       return null;
@@ -77,8 +77,8 @@ export async function getUser(email: string) {
 
 export async function getAllUsers(): Promise<User[]> {
   try {
-    const usersRef = collection(db, "users");
-    const querySnapshot = await getDocs(usersRef);
+    const usersRef = db.collection("users");
+    const querySnapshot = await usersRef.get();
     
     const users = querySnapshot.docs.map(doc => ({
       id: doc.id,
@@ -94,7 +94,7 @@ export async function getAllUsers(): Promise<User[]> {
 
 export async function deleteUser(uid: string) {
   try {
-    await deleteDoc(doc(db, "users", uid));
+    await db.collection("users").doc(uid).delete();
     return { success: true };
   } catch (err: any) {
     console.error("Error deleting user:", err);
@@ -104,7 +104,7 @@ export async function deleteUser(uid: string) {
 
 export async function updateUserRole(uid: string, newRole: string) {
   try {
-    await updateDoc(doc(db, "users", uid), { role: newRole });
+    await db.collection("users").doc(uid).update({ role: newRole });
     return { success: true };
   } catch (err: any) {
     console.error("Error updating user role:", err);
