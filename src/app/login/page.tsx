@@ -25,7 +25,7 @@ export default function LoginPage() {
         } else if (result.role === "karyawan") {
           router.push("/dashboard/karyawan");
         } else if (result.role === "umkm-amil"){
-          router.push("/dashboard/umkm-amil");
+          router.push("/dashboard/mitra");
         } else {
           setError("Anda tidak memiliki akses ke halaman ini.");
         }
@@ -46,7 +46,7 @@ export default function LoginPage() {
         <div className="absolute inset-0 bg-gradient-to-br from-black/70 via-black/60 to-emerald-900/80 z-10"></div>
         <div className="absolute inset-0 bg-gradient-to-r from-emerald-900/30 to-teal-900/30 z-10"></div>
         <Image
-          src="/img/Log.svg"
+          src="/img/bank.jpg"
           alt="Islamic Background"
           fill
           className="object-cover"

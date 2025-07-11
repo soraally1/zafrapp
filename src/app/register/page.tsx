@@ -1,10 +1,11 @@
 "use client";
-
 import Link from "next/link";
 import { useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { registerUser } from "@/app/api/service/firebaseUserService";
+import { LuMail, LuLock, LuStar, LuMoon, LuHeart, LuShield } from "react-icons/lu";
+import { Listbox } from "@headlessui/react";
 
 const roles = [
   { value: "hr-keuangan", label: "HR & Keuangan" },
@@ -56,7 +57,6 @@ export default function RegisterPage() {
     e.preventDefault();
     setLoading(true);
     setError("");
-
     let userData: any = { name, email, password, role };
     if (role === 'umkm-amil') {
       userData = {
@@ -67,16 +67,14 @@ export default function RegisterPage() {
         jenisUsaha
       };
     }
-
     const result = await registerUser(userData);
     if (result.success) {
-      // Redirect to dashboard based on role
       if (role === "hr-keuangan") {
         router.push("/dashboard/hr-keuangan");
       } else if (role === "karyawan") {
         router.push("/dashboard/karyawan");
       } else if (role === "umkm-amil") {
-        router.push("/dashboard/umkm-amil");
+        router.push("/dashboard/mitra");
       } else {
         router.push("/dashboard");
       }
@@ -87,156 +85,324 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-white p-2 sm:p-4">
-      <div className="w-full max-w-7xl  flex flex-col md:flex-row overflow-hidden ">
-        {/* Left Panel: Form */}
-        <div className="flex-1 flex flex-col justify-center p-6 sm:p-10 md:p-12 gap-6">
-          <div className="flex flex-col items-start gap-3 mb-4">
-            <Image src="/zafra.svg" alt="ZAFRA Logo" width={70} height={35} className="mb-2" />
-            <h2 className="text-3xl sm:text-4xl font-extrabold text-[#00C570] leading-tight">Register ZAFRA</h2>
-            <p className="text-gray-500 text-base sm:text-lg font-medium">Buat akun baru untuk mengelola keuangan syariah Anda</p>
+    <div className="min-h-screen relative overflow-hidden">
+      {/* Background Image with Dark Overlay */}
+      <div className="absolute inset-0 z-0">
+        <div className="absolute inset-0 bg-gradient-to-br from-black/70 via-black/60 to-emerald-900/80 z-10"></div>
+        <div className="absolute inset-0 bg-gradient-to-r from-emerald-900/30 to-teal-900/30 z-10"></div>
+        <Image
+          src="/img/bank.jpg"
+          alt="Islamic Background"
+          fill
+          className="object-cover"
+          priority
+        />
+      </div>
+      {/* Islamic Pattern Overlay */}
+      <div className="absolute inset-0 z-20 opacity-10">
+        <div className="absolute top-0 left-0 w-full h-full">
+          <div className="grid grid-cols-12 gap-4 h-full opacity-20">
+            {Array.from({ length: 120 }).map((_, i) => (
+              <div key={i} className="border border-white/10 rounded-full"></div>
+            ))}
           </div>
-          <div className="border-b border-gray-200 dark:border-gray-700 my-2 w-full" />
-          <form onSubmit={handleSubmit} className="flex flex-col gap-4 w-full">
-            <label className="flex flex-col gap-1 text-left w-full">
-              <span className="font-semibold text-gray-700 ">Nama</span>
-              <input
-                type="text"
-                placeholder="Nama"
-                value={name}
-                onChange={e => setName(e.target.value)}
-                className="border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-2 sm:py-3 focus:outline-none focus:ring-2 focus:ring-[#00C570] dark:bg-gray-800 dark:text-white transition w-full hover:border-[#00C570] text-base sm:text-lg"
-                required
-                disabled={loading}
-              />
-            </label>
-            <label className="flex flex-col gap-1 text-left w-full">
-              <span className="font-semibold text-gray-700 ">Email</span>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
-                  {/* Email Icon */}
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25H4.5a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-.659 1.591l-7.09 7.09a2.25 2.25 0 01-3.182 0l-7.09-7.09A2.25 2.25 0 012.25 6.993V6.75" />
-                  </svg>
-                </span>
-                <input
-                  type="email"
-                  placeholder="Email"
-                  value={email}
-                  onChange={e => setEmail(e.target.value)}
-                  className="pl-10 border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-2 sm:py-3 focus:outline-none focus:ring-2 focus:ring-[#00C570] dark:bg-gray-800 dark:text-white transition w-full hover:border-[#00C570] text-base sm:text-lg"
-                  required
-                  disabled={loading}
-                />
-              </div>
-            </label>
-            <label className="flex flex-col gap-1 text-left w-full">
-              <span className="font-semibold text-gray-700">Password</span>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
-                  {/* Password Icon */}
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V7.125a4.125 4.125 0 10-8.25 0V10.5m12.375 0A2.625 2.625 0 0017.25 21h-10.5a2.625 2.625 0 01-2.625-2.625v-7.875A2.625 2.625 0 016.75 7.875h10.5a2.625 2.625 0 012.625 2.625v7.875z" />
-                  </svg>
-                </span>
-                <input
-                  type="password"
-                  placeholder="Password"
-                  value={password}
-                  onChange={e => setPassword(e.target.value)}
-                  className="pl-10 border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-2 sm:py-3 focus:outline-none focus:ring-2 focus:ring-[#00C570] dark:bg-gray-800 dark:text-white transition w-full hover:border-[#00C570] text-base sm:text-lg"
-                  required
-                  disabled={loading}
-                />
-              </div>
-            </label>
-            <label className="flex flex-col gap-1 text-left w-full">
-              <span className="font-semibold text-gray-700">Role</span>
-              <select
-                value={role}
-                onChange={e => setRole(e.target.value)}
-                className="border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-2 sm:py-3 focus:outline-none focus:ring-2 focus:ring-[#00C570] dark:bg-gray-800 dark:text-white transition w-full hover:border-[#00C570] text-base sm:text-lg"
-                disabled={loading}
-              >
-                {roles.map(r => (
-                  <option key={r.value} value={r.value}>{r.label}</option>
-                ))}
-              </select>
-            </label>
-            {role === 'umkm-amil' && (
-              <>
-                <label className="flex flex-col gap-1 text-left w-full">
-                  <span className="font-semibold text-gray-700">Nama Mitra</span>
-                  <input
-                    type="text"
-                    placeholder="Nama Lengkap Mitra atau Badan Usaha"
-                    value={namaMitra}
-                    onChange={(e) => setNamaMitra(e.target.value)}
-                    className="border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-2 sm:py-3 focus:outline-none focus:ring-2 focus:ring-[#00C570] dark:bg-gray-800 dark:text-white transition w-full hover:border-[#00C570] text-base sm:text-lg"
-                    required
-                    disabled={loading}
-                  />
-                </label>
-                <label className="flex flex-col gap-1 text-left w-full">
-                  <span className="font-semibold text-gray-700">Alamat Mitra</span>
-                  <input
-                    type="text"
-                    placeholder="Alamat Lengkap Mitra"
-                    value={alamatMitra}
-                    onChange={(e) => setAlamatMitra(e.target.value)}
-                    className="border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-2 sm:py-3 focus:outline-none focus:ring-2 focus:ring-[#00C570] dark:bg-gray-800 dark:text-white transition w-full hover:border-[#00C570] text-base sm:text-lg"
-                    required
-                    disabled={loading}
-                  />
-                </label>
-                <label className="flex flex-col gap-1 text-left w-full">
-                  <span className="font-semibold text-gray-700">Jenis Usaha</span>
-                  <select
-                    value={jenisUsaha}
-                    onChange={(e) => setJenisUsaha(e.target.value)}
-                    className="border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-2 sm:py-3 focus:outline-none focus:ring-2 focus:ring-[#00C570] dark:bg-gray-800 dark:text-white transition w-full hover:border-[#00C570] text-base sm:text-lg"
-                    required
-                    disabled={loading}
-                  >
-                    {jenisUsahaOptions.map((option) => (
-                      <option key={option.value} value={option.value} disabled={option.disabled}>{option.label}</option>
-                    ))}
-                  </select>
-                </label>
-                <label className="flex flex-col gap-1 text-left w-full">
-                  <span className="font-semibold text-gray-700">Detail Bisnis</span>
-                  <textarea
-                    placeholder="Jelaskan secara singkat tentang bisnis Anda"
-                    value={detailBisnis}
-                    onChange={(e) => setDetailBisnis(e.target.value)}
-                    className="border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-2 sm:py-3 focus:outline-none focus:ring-2 focus:ring-[#00C570] dark:bg-gray-800 dark:text-white transition w-full hover:border-[#00C570] text-base sm:text-lg"
-                    rows={3}
-                    required
-                    disabled={loading}
-                  />
-                </label>
-              </>
-            )}
-            {error && <div className="text-red-600 text-sm font-semibold mt-1">{error}</div>}
-            <button type="submit" className="bg-[#00C570] hover:bg-green-600 active:bg-green-700 text-white rounded-lg py-2 sm:py-3 font-semibold shadow transition text-base sm:text-lg" disabled={loading}>
-              {loading ? "Loading..." : "Register"}
-            </button>
-          </form>
-          <p className="text-sm text-gray-600 dark:text-gray-300 mt-2">
-            Sudah punya akun? <Link href="/login" className="text-[#00C570] hover:underline font-semibold">Login</Link>
-          </p>
         </div>
-        {/* Right Panel: Image & Tagline */}
-        <div className="hidden md:flex flex-2 relative items-center justify-center ">
-          <div className="absolute inset-0 w-full h-full">
-            <Image
-              src="/img/Log.svg"
-              alt="ZAFRA Bank Jateng"
-              fill
-              className=""
-              style={{ zIndex: 0 }}
-              priority
-            />
+      </div>
+      {/* Floating Islamic Elements */}
+      <div className="absolute inset-0 z-20">
+        <div className="absolute top-20 left-20 text-emerald-400/20 animate-pulse">
+          <LuStar size={32} />
+        </div>
+        <div className="absolute top-40 right-32 text-teal-400/20 animate-pulse">
+          <LuMoon size={28} />
+        </div>
+        <div className="absolute bottom-32 left-32 text-emerald-400/20 animate-pulse">
+          <LuShield size={24} />
+        </div>
+        <div className="absolute bottom-20 right-20 text-teal-400/20 animate-pulse">
+          <LuStar size={36} />
+        </div>
+      </div>
+      {/* Main Content */}
+      <div className="relative z-30 min-h-screen flex items-center justify-center p-4 sm:p-6">
+        <div className="w-full max-w-6xl flex flex-col lg:flex-row items-center gap-12 lg:gap-20">
+          {/* Left Side - Islamic Welcome Content */}
+          <div className="flex-1 text-center lg:text-left text-white space-y-6">
+            <div className="flex justify-center lg:justify-start mb-6">
+              <Image src="/zafra.svg" alt="ZAFRA Logo" width={80} height={40} className="filter brightness-0 invert" />
+            </div>
+            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold leading-tight">
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-teal-400">
+                Selamat Datang
+              </span>
+              <br />
+              <span className="text-white">di ZAFRA</span>
+              <br />
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-teal-400 to-emerald-400">
+                Syariah Finance
+              </span>
+            </h1>
+            <p className="text-xl sm:text-2xl text-gray-200 leading-relaxed font-medium">
+              Daftar akun baru dan kelola keuangan syariah dengan penuh berkah dan transparansi
+            </p>
+            {/* Islamic Quote Card */}
+            <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-6 shadow-2xl">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 bg-gradient-to-r from-emerald-400 to-teal-400 rounded-full flex items-center justify-center">
+                  <LuStar size={20} className="text-white" />
+                </div>
+                <h3 className="text-emerald-300 font-semibold">Firman Allah SWT</h3>
+              </div>
+              <p className="text-emerald-200 font-semibold text-lg mb-3 leading-relaxed">
+                "وَأَحَلَّ اللَّهُ الْبَيْعَ وَحَرَّمَ الرِّبَا"
+              </p>
+              <p className="text-gray-300 text-sm leading-relaxed">
+                "Allah telah menghalalkan jual beli dan mengharamkan riba."
+              </p>
+              <p className="text-emerald-400 text-xs mt-2 font-medium">- QS. Al-Baqarah: 275</p>
+            </div>
+            {/* Islamic Values */}
+            <div className="hidden lg:flex gap-6 mt-8">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 bg-emerald-500/20 rounded-full flex items-center justify-center">
+                  <LuShield size={16} className="text-emerald-400" />
+                </div>
+                <span className="text-gray-200 font-medium">Halal & Berkah</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 bg-teal-500/20 rounded-full flex items-center justify-center">
+                  <LuHeart size={16} className="text-teal-400" />
+                </div>
+                <span className="text-gray-200 font-medium">Adil & Transparan</span>
+              </div>
+            </div>
+          </div>
+          {/* Right Side - Register Form */}
+          <div className="flex-1 max-w-md w-full">
+            <div className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-3xl p-8 shadow-2xl">
+              <div className="text-center mb-8">
+                <div className="w-16 h-16 bg-gradient-to-r from-emerald-400 to-teal-400 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <LuShield size={28} className="text-white" />
+                </div>
+                <h2 className="text-2xl sm:text-3xl font-bold text-white mb-2">
+                  Daftar Akun Baru
+                </h2>
+                <p className="text-gray-300 text-sm">
+                  Akses dashboard keuangan syariah yang aman dan terpercaya
+                </p>
+              </div>
+              <form onSubmit={handleSubmit} className="space-y-6">
+                <div>
+                  <label className="block text-gray-200 font-medium mb-2 text-sm">
+                    Nama Lengkap
+                  </label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <LuStar size={20} className="text-gray-400" />
+                    </div>
+                    <input
+                      type="text"
+                      placeholder="Masukkan nama lengkap Anda"
+                      value={name}
+                      onChange={e => setName(e.target.value)}
+                      className="w-full pl-10 pr-4 py-3 bg-white/10 backdrop-blur-md border border-white/20 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:border-transparent transition-all duration-300"
+                      required
+                      disabled={loading}
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-gray-200 font-medium mb-2 text-sm">
+                    Alamat Email
+                  </label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <LuMail size={20} className="text-gray-400" />
+                    </div>
+                    <input
+                      type="email"
+                      placeholder="Masukkan email Anda"
+                      value={email}
+                      onChange={e => setEmail(e.target.value)}
+                      className="w-full pl-10 pr-4 py-3 bg-white/10 backdrop-blur-md border border-white/20 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:border-transparent transition-all duration-300"
+                      required
+                      disabled={loading}
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-gray-200 font-medium mb-2 text-sm">
+                    Password
+                  </label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <LuLock size={20} className="text-gray-400" />
+                    </div>
+                    <input
+                      type="password"
+                      placeholder="Masukkan password Anda"
+                      value={password}
+                      onChange={e => setPassword(e.target.value)}
+                      className="w-full pl-10 pr-4 py-3 bg-white/10 backdrop-blur-md border border-white/20 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:border-transparent transition-all duration-300"
+                      required
+                      disabled={loading}
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-gray-200 font-medium mb-2 text-sm">Role</label>
+                  <div className="relative">
+                    <Listbox value={role} onChange={setRole}>
+                      {({ open }) => (
+                        <>
+                          <Listbox.Button className="w-full pl-4 pr-10 py-3 bg-white/10 backdrop-blur-md border border-white/20 rounded-xl text-white text-left focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:border-transparent transition-all duration-300 flex items-center">
+                            <span className="flex-1">{roles.find(r => r.value === role)?.label}</span>
+                            <span className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none">
+                              <LuShield size={18} className="text-gray-400" />
+                            </span>
+                          </Listbox.Button>
+                          <Listbox.Options className="absolute mt-1 w-full bg-white/90 rounded-xl shadow-xl border border-emerald-100 py-1 z-50 text-emerald-800">
+                            {roles.map((r) => (
+                              <Listbox.Option
+                                key={r.value}
+                                value={r.value}
+                                className={({ active }) =>
+                                  `cursor-pointer select-none px-4 py-3 rounded-lg ${active ? "bg-emerald-100 text-emerald-900" : ""}`
+                                }
+                              >
+                                {r.label}
+                              </Listbox.Option>
+                            ))}
+                          </Listbox.Options>
+                        </>
+                      )}
+                    </Listbox>
+                  </div>
+                </div>
+                {role === 'umkm-amil' && (
+                  <>
+                    <div>
+                      <label className="block text-gray-200 font-medium mb-2 text-sm">
+                        Nama Mitra
+                      </label>
+                      <div className="relative">
+                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                          <LuStar size={18} className="text-gray-400" />
+                        </div>
+                        <input
+                          type="text"
+                          placeholder="Nama Lengkap Mitra atau Badan Usaha"
+                          value={namaMitra}
+                          onChange={(e) => setNamaMitra(e.target.value)}
+                          className="w-full pl-10 pr-4 py-3 bg-white/10 backdrop-blur-md border border-white/20 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:border-transparent transition-all duration-300"
+                          required
+                          disabled={loading}
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-gray-200 font-medium mb-2 text-sm">
+                        Alamat Mitra
+                      </label>
+                      <div className="relative">
+                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                          <LuMail size={18} className="text-gray-400" />
+                        </div>
+                        <input
+                          type="text"
+                          placeholder="Alamat Lengkap Mitra"
+                          value={alamatMitra}
+                          onChange={(e) => setAlamatMitra(e.target.value)}
+                          className="w-full pl-10 pr-4 py-3 bg-white/10 backdrop-blur-md border border-white/20 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:border-transparent transition-all duration-300"
+                          required
+                          disabled={loading}
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-gray-200 font-medium mb-2 text-sm">Jenis Usaha</label>
+                      <div className="relative">
+                        <Listbox value={jenisUsaha} onChange={setJenisUsaha}>
+                          {({ open }) => (
+                            <>
+                              <Listbox.Button className="w-full pl-4 pr-10 py-3 bg-white/10 backdrop-blur-md border border-white/20 rounded-xl text-white text-left focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:border-transparent transition-all duration-300 flex items-center">
+                                <span className="flex-1">{jenisUsahaOptions.find(j => j.value === jenisUsaha)?.label || "Pilih Jenis Usaha..."}</span>
+                                <span className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none">
+                                  <LuStar size={16} className="text-gray-400" />
+                                </span>
+                              </Listbox.Button>
+                              <Listbox.Options className="absolute mt-1 w-full bg-white/90 rounded-xl shadow-xl border border-emerald-100 py-1 z-50 text-emerald-800 max-h-60 overflow-auto">
+                                {jenisUsahaOptions.map((option) => (
+                                  <Listbox.Option
+                                    key={option.value}
+                                    value={option.value}
+                                    disabled={option.disabled}
+                                    className={({ active, disabled }) =>
+                                      `cursor-pointer select-none px-4 py-3 rounded-lg ${active ? "bg-emerald-100 text-emerald-900" : ""} ${disabled ? "opacity-50 cursor-not-allowed" : ""}`
+                                    }
+                                  >
+                                    {option.label}
+                                  </Listbox.Option>
+                                ))}
+                              </Listbox.Options>
+                            </>
+                          )}
+                        </Listbox>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-gray-200 font-medium mb-2 text-sm">
+                        Detail Bisnis
+                      </label>
+                      <div className="relative">
+                        <textarea
+                          placeholder="Jelaskan secara singkat tentang bisnis Anda"
+                          value={detailBisnis}
+                          onChange={(e) => setDetailBisnis(e.target.value)}
+                          className="w-full pl-4 pr-4 py-3 bg-white/10 backdrop-blur-md border border-white/20 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:border-transparent transition-all duration-300"
+                          rows={3}
+                          required
+                          disabled={loading}
+                        />
+                      </div>
+                    </div>
+                  </>
+                )}
+                {error && (
+                  <div className="bg-red-500/20 border border-red-500/50 rounded-lg p-3">
+                    <p className="text-red-300 text-sm font-medium">{error}</p>
+                  </div>
+                )}
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white font-semibold py-3 px-6 rounded-xl transition-all duration-300 transform hover:scale-105 active:scale-95 shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {loading ? (
+                    <div className="flex items-center justify-center gap-2">
+                      <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                      Memproses...
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-center gap-2">
+                      <LuHeart size={18} />
+                      Daftar dengan Berkah
+                    </div>
+                  )}
+                </button>
+                <div className="flex items-center justify-between text-sm">
+                  <Link href="/login" className="text-emerald-400 hover:text-emerald-300 transition-colors">
+                    Sudah punya akun? Login
+                  </Link>
+                </div>
+              </form>
+              {/* Bottom Islamic Quote */}
+              <div className="mt-8 text-center">
+                <p className="text-gray-400 text-xs italic leading-relaxed">
+                  "Barangsiapa yang memudahkan urusan orang lain, maka Allah akan memudahkan urusannya di dunia dan akhirat."
+                </p>
+              </div>
+            </div>
           </div>
         </div>
       </div>

@@ -20,16 +20,24 @@ const menu = [
   { label: "Dashboard", icon: <LiaUserSolid size={24} />, path: "/dashboard/karyawan" },
   // Mitra
   { label: "Dashboard", icon: <LiaUserSolid size={24} />, path: "/dashboard/mitra" },
+  { label: "AI Syariah", icon: <LiaRobotSolid size={24} />, path: "/dashboard/mitra/ai-syariah", mitraOnly: true },
+  { label: "Transaksi", icon: <LiaWalletSolid size={24} />, path: "/dashboard/mitra/transactions", mitraOnly: true },
 ];
 
 interface SidebarProps {
   active?: string;
 }
 
+const ALLOWED_ROLES = ["karyawan", "hr-keuangan", "umkm-amil"] as const;
+type UserRole = typeof ALLOWED_ROLES[number];
+function isUserRole(role: string): role is UserRole {
+  return ALLOWED_ROLES.includes(role as UserRole);
+}
+
 const Sidebar: React.FC<SidebarProps> = ({ active = "Dashboard" }) => {
   const router = useRouter();
   const pathname = usePathname();
-  const [userRole, setUserRole] = useState<string | null>(null);
+  const [userRole, setUserRole] = useState<UserRole | null>(null);
   const [loadingUser, setLoadingUser] = useState(true);
 
   useEffect(() => {
@@ -38,7 +46,11 @@ const Sidebar: React.FC<SidebarProps> = ({ active = "Dashboard" }) => {
       if (user && user.uid) {
         try {
           const profile = await getUserProfile(user.uid);
-          setUserRole(profile?.role || null);
+          if (profile?.role && isUserRole(profile.role)) {
+            setUserRole(profile.role);
+          } else {
+            setUserRole(null);
+          }
         } catch {
           setUserRole(null);
         }
@@ -67,23 +79,19 @@ const Sidebar: React.FC<SidebarProps> = ({ active = "Dashboard" }) => {
     return pathname.startsWith(path) && path !== "/dashboard/hr-keuangan";
   };
 
-
-  const filteredMenu = menu.filter(item => {
-    if (userRole === "karyawan") {
-      return item.path === "/dashboard/karyawan";
-    }
-    if (userRole === "hr-keuangan") {
-      return item.path.startsWith("/dashboard/hr-keuangan");
-    }
-    if (userRole === "umkm-amil") {
-      return item.path === "/dashboard/mitra";
-    }
-    // Default: show all
-    return true;
-  });
+  let filteredMenu: typeof menu = [];
+  if (userRole === "karyawan") {
+    filteredMenu = menu.filter(item => item.path === "/dashboard/karyawan");
+  } else if (userRole === "hr-keuangan") {
+    filteredMenu = menu.filter(item => item.path.startsWith("/dashboard/hr-keuangan"));
+  } else if (userRole === "umkm-amil") {
+    filteredMenu = menu.filter(item => item.path === "/dashboard/mitra" || item.mitraOnly);
+  } else {
+    filteredMenu = [];
+  }
 
   if (loadingUser) {
-    return null; // or a loading spinner if you prefer
+    return <div className="flex items-center justify-center h-full p-8 text-[#00C570]">Loading menu...</div>;
   }
 
   return (

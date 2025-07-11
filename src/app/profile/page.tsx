@@ -4,7 +4,7 @@ import Image from "next/image";
 import Sidebar from "../components/Sidebar";
 import { onAuthStateChanged } from "firebase/auth";
 import { getUserProfile, updateUserProfilePhoto, updateUserHeaderPhoto, createOrUpdateProfile } from "../api/service/userProfileService";
-import { LiaMedalSolid, LiaClockSolid, LiaWalletSolid, LiaChartBarSolid, LiaUserSolid } from "react-icons/lia";
+import { LiaMedalSolid, LiaClockSolid, LiaWalletSolid, LiaChartBarSolid, LiaUserSolid, LiaHomeSolid, LiaDonateSolid, LiaRobotSolid } from "react-icons/lia";
 import { BsStars } from "react-icons/bs";
 import { IoMdCamera } from "react-icons/io";
 import { auth } from "@/lib/firebaseApi";
@@ -46,6 +46,77 @@ const mockInventory = [
   { id: "payroll-inventory", label: "Fitur Payroll", icon: <LiaWalletSolid size={28} className="text-pink-400" /> },
   { id: "zakat-inventory", label: "Fitur Zakat", icon: <BsStars size={28} className="text-yellow-400" /> },
 ];
+
+function getRoleShortcuts(role: string) {
+  if (role === "hr-keuangan") {
+    return [
+      { id: "payroll", label: "Payroll", icon: <LiaWalletSolid size={28} className="text-pink-400" />, href: "/dashboard/hr-keuangan/payroll" },
+      { id: "reports", label: "Laporan", icon: <LiaChartBarSolid size={28} className="text-green-400" />, href: "/dashboard/hr-keuangan/reports" },
+      { id: "zakat", label: "Zakat", icon: <LiaDonateSolid size={28} className="text-yellow-400" />, href: "/dashboard/hr-keuangan/zakat" },
+      { id: "employees", label: "Karyawan", icon: <LiaUserSolid size={28} className="text-blue-400" />, href: "/dashboard/hr-keuangan/karyawan" },
+      { id: "ai", label: "ZafraAI", icon: <LiaRobotSolid size={28} className="text-purple-400" />, href: "/dashboard/hr-keuangan/ai-hr" },
+    ];
+  }
+  if (role === "karyawan") {
+    return [
+      { id: "payroll-slip", label: "Slip Gaji", icon: <LiaWalletSolid size={28} className="text-pink-400" />, href: "/dashboard/karyawan" },
+      { id: "attendance", label: "Absensi", icon: <LiaClockSolid size={28} className="text-green-400" />, href: "/dashboard/karyawan" },
+      { id: "leave", label: "Cuti", icon: <LiaMedalSolid size={28} className="text-yellow-400" />, href: "/dashboard/karyawan" },
+      { id: "profile", label: "Profil", icon: <LiaUserSolid size={28} className="text-blue-400" />, href: "/profile" },
+    ];
+  }
+  if (role === "umkm-amil") {
+    return [
+      { id: "transactions", label: "Transaksi", icon: <LiaWalletSolid size={28} className="text-pink-400" />, href: "/dashboard/mitra/transactions" },
+      { id: "ai-syariah", label: "AI Syariah", icon: <LiaRobotSolid size={28} className="text-purple-400" />, href: "/dashboard/mitra/ai-syariah" },
+      { id: "business-reports", label: "Laporan Bisnis", icon: <LiaChartBarSolid size={28} className="text-green-400" />, href: "/dashboard/mitra" },
+      { id: "profile", label: "Profil", icon: <LiaUserSolid size={28} className="text-blue-400" />, href: "/profile" },
+    ];
+  }
+  // fallback for unknown role
+  return [
+    { id: "profile", label: "Profil", icon: <LiaUserSolid size={28} className="text-blue-400" />, href: "/profile" },
+  ];
+}
+
+function getRoleBadge(role: string) {
+  if (role === "hr-keuangan") return <span className="px-2.5 py-1 rounded-full bg-[#E6FFF4] text-[#00C570] text-xs font-medium flex items-center gap-1"><LiaHomeSolid size={16} /> HR & KEUANGAN</span>;
+  if (role === "karyawan") return <span className="px-2.5 py-1 rounded-full bg-blue-50 text-blue-600 text-xs font-medium flex items-center gap-1"><LiaUserSolid size={16} /> KARYAWAN</span>;
+  if (role === "umkm-amil") return <span className="px-2.5 py-1 rounded-full bg-yellow-50 text-yellow-600 text-xs font-medium flex items-center gap-1"><LiaUserSolid size={16} /> MITRA/UMKM</span>;
+  return <span className="px-2.5 py-1 rounded-full bg-gray-100 text-gray-500 text-xs font-medium">Unknown</span>;
+}
+
+function getRoleFeatures(role: string) {
+  if (role === "hr-keuangan") {
+    return [
+      { id: "payroll", label: "Payroll", icon: <LiaWalletSolid size={32} className="text-pink-400" />, desc: "Kelola dan proses gaji karyawan", href: "/dashboard/hr-keuangan/payroll" },
+      { id: "reports", label: "Laporan Keuangan", icon: <LiaChartBarSolid size={32} className="text-green-400" />, desc: "Lihat dan ekspor laporan keuangan", href: "/dashboard/hr-keuangan/reports" },
+      { id: "zakat", label: "Zakat", icon: <LiaDonateSolid size={32} className="text-yellow-400" />, desc: "Kelola zakat perusahaan", href: "/dashboard/hr-keuangan/zakat" },
+      { id: "employees", label: "Karyawan", icon: <LiaUserSolid size={32} className="text-blue-400" />, desc: "Manajemen data karyawan", href: "/dashboard/hr-keuangan/karyawan" },
+      { id: "ai", label: "ZafraAI", icon: <LiaRobotSolid size={32} className="text-purple-400" />, desc: "Asisten AI untuk HR & Keuangan", href: "/dashboard/hr-keuangan/ai-hr" },
+    ];
+  }
+  if (role === "karyawan") {
+    return [
+      { id: "payroll-slip", label: "Slip Gaji", icon: <LiaWalletSolid size={32} className="text-pink-400" />, desc: "Lihat slip gaji bulanan Anda", href: "/dashboard/karyawan" },
+      { id: "attendance", label: "Absensi", icon: <LiaClockSolid size={32} className="text-green-400" />, desc: "Cek dan kelola kehadiran", href: "/dashboard/karyawan" },
+      { id: "leave", label: "Cuti", icon: <LiaMedalSolid size={32} className="text-yellow-400" />, desc: "Ajukan cuti dengan mudah", href: "/dashboard/karyawan" },
+      { id: "profile", label: "Profil", icon: <LiaUserSolid size={32} className="text-blue-400" />, desc: "Lihat dan edit profil Anda", href: "/profile" },
+    ];
+  }
+  if (role === "umkm-amil") {
+    return [
+      { id: "transactions", label: "Transaksi", icon: <LiaWalletSolid size={32} className="text-pink-400" />, desc: "Catat dan kelola transaksi bisnis", href: "/dashboard/mitra/transactions" },
+      { id: "ai-syariah", label: "AI Syariah", icon: <LiaRobotSolid size={32} className="text-purple-400" />, desc: "Verifikasi syariah transaksi dengan AI", href: "/dashboard/mitra/ai-syariah" },
+      { id: "business-reports", label: "Laporan Bisnis", icon: <LiaChartBarSolid size={32} className="text-green-400" />, desc: "Lihat performa dan laporan bisnis", href: "/dashboard/mitra" },
+      { id: "profile", label: "Profil", icon: <LiaUserSolid size={32} className="text-blue-400" />, desc: "Lihat dan edit profil usaha", href: "/profile" },
+    ];
+  }
+  // fallback for unknown role
+  return [
+    { id: "profile", label: "Profil", icon: <LiaUserSolid size={32} className="text-blue-400" />, desc: "Lihat dan edit profil Anda", href: "/profile" },
+  ];
+}
 
 export default function ProfilePage() {
   const [user, setUser] = useState<any>(null);
@@ -194,7 +265,7 @@ export default function ProfilePage() {
 
           {/* Profile Content */}
           <div className="max-w-5xl mx-auto px-4 -mt-8 relative z-10">
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-24">
               {/* Profile Header */}
               <div className="flex flex-col md:flex-row items-start gap-6 mb-8">
                 {/* Avatar */}
@@ -231,12 +302,10 @@ export default function ProfilePage() {
                       {loading ? (
                         <span className="h-7 w-40 bg-gray-200 rounded animate-pulse inline-block" />
                       ) : (
-                        "ZafraHR"
+                        user?.name || "ZafraHR"
                       )}
                     </h2>
-                    <span className="px-2.5 py-1 rounded-full bg-[#E6FFF4] text-[#00C570] text-xs font-medium">
-                      HR & KEUANGAN
-                    </span>
+                    {getRoleBadge(user?.role)}
                   </div>
                   <p className="text-gray-500 text-sm mb-4">
                     {loading ? (
@@ -248,69 +317,22 @@ export default function ProfilePage() {
                 </div>
               </div>
 
-              {/* Stats Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {mockStats.map((stat) => (
-                  <div
-                    key={stat.id}
-                    className="bg-white rounded-xl p-4 border border-gray-100 hover:border-[#00C570]/20 transition-colors"
-                  >
-                    <div className="flex items-start gap-3">
-                      <div className="p-2 rounded-lg bg-[#E6FFF4]">
-                        {stat.icon}
-                      </div>
-                      <div>
-                        <span className="block text-2xl font-bold text-gray-900 mb-1">{stat.value}</span>
-                        <span className="block text-sm font-medium text-gray-700">{stat.label}</span>
-                        <span className="block text-xs text-gray-500 mt-0.5">{stat.subLabel}</span>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              {/* Achievements & Features */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
-                {/* Achievements */}
-                <div className="bg-white rounded-xl border border-gray-100 p-6">
-                  <div className="flex items-center justify-between mb-6">
-                    <div className="flex items-center gap-2">
-                      <LiaMedalSolid size={20} className="text-[#00C570]" />
-                      <h3 className="font-semibold text-gray-900">Pencapaian</h3>
-                    </div>
-                    <span className="px-2 py-0.5 rounded-full bg-[#E6FFF4] text-[#00C570] text-xs font-medium">3</span>
-                  </div>
-                  <div className="grid grid-cols-3 gap-4">
-                    {mockAchievements.map((ach) => (
-                      <div key={ach.id} className="flex flex-col items-center gap-2">
-                        <div className="w-14 h-14 rounded-xl bg-[#E6FFF4] flex items-center justify-center">
-                          {ach.icon}
-                        </div>
-                        <span className="text-xs text-gray-600 text-center">{ach.label}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Features */}
-                <div className="bg-white rounded-xl border border-gray-100 p-6">
-                  <div className="flex items-center justify-between mb-6">
-                    <div className="flex items-center gap-2">
-                      <BsStars size={20} className="text-[#00C570]" />
-                      <h3 className="font-semibold text-gray-900">Fitur Saya</h3>
-                    </div>
-                    <span className="px-2 py-0.5 rounded-full bg-[#E6FFF4] text-[#00C570] text-xs font-medium">3</span>
-                  </div>
-                  <div className="grid grid-cols-3 gap-4">
-                    {mockInventory.map((item) => (
-                      <div key={item.id} className="flex flex-col items-center gap-2">
-                        <div className="w-14 h-14 rounded-xl bg-[#E6FFF4] flex items-center justify-center">
-                          {item.icon}
-                        </div>
-                        <span className="text-xs text-gray-600 text-center">{item.label}</span>
-                      </div>
-                    ))}
-                  </div>
+              {/* Features Section (dynamic by role) */}
+              <div className="mb-8">
+                <h3 className="font-semibold text-gray-900 mb-3">Fitur Utama</h3>
+                <p className="text-gray-500 text-sm mb-4">Akses cepat ke fitur-fitur utama sesuai peran Anda.</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
+                  {getRoleFeatures(user?.role).map((item) => (
+                    <a
+                      key={item.id}
+                      href={item.href}
+                      className="flex flex-col items-center gap-3 bg-white hover:bg-[#E6FFF4] rounded-2xl p-6 border border-gray-100 hover:border-[#00C570]/30 transition-colors shadow group h-full"
+                    >
+                      <span className="text-3xl group-hover:scale-110 transition-transform">{item.icon}</span>
+                      <span className="text-base font-semibold text-gray-900 text-center">{item.label}</span>
+                      <span className="text-xs text-gray-500 text-center">{item.desc}</span>
+                    </a>
+                  ))}
                 </div>
               </div>
             </div>

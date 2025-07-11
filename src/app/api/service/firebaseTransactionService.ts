@@ -1,4 +1,5 @@
 import { firestore, admin } from '@/lib/firebaseAdmin';
+import { getFirestore } from "firebase-admin/firestore";
 
 interface Transaction {
     userId: string;
@@ -33,4 +34,14 @@ export async function getAllTransactions() {
         console.error('Error fetching transactions:', error);
         return [];
     }
+}
+
+
+
+export async function getTransactionReportsByUserId(userId: string) {
+  const db = getFirestore();
+  const reportsRef = db.collection("transactionReports");
+  const snapshot = await reportsRef.where("userId", "==", userId).get();
+  const reports = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  return reports;
 }

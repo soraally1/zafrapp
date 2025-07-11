@@ -7,8 +7,11 @@ import Sidebar from '@/app/components/Sidebar';
 import Topbar from '@/app/components/Topbar';
 import { FiClock, FiCheckCircle, FiChevronRight, FiFileText, FiChevronDown } from 'react-icons/fi';
 import VerificationModal from '@/app/components/VerificationModal';
+import { getAuth, onAuthStateChanged } from "firebase/auth";
+import { getUserProfile } from "@/app/api/service/userProfileService";
+import { useRouter } from "next/navigation";
 
-interface Transaction {
+interface SyariahTransaction {
   id: string;
   date: string;
   description: string;
@@ -17,6 +20,8 @@ interface Transaction {
   shariaStatus: 'pending' | 'verified';
   aiStatus?: string;
   aiExplanation?: string;
+  userId?: string;
+  type?: string;
   [key: string]: any;
 }
 
@@ -30,17 +35,61 @@ function formatCurrency(amount: number) {
 }
 
 export default function AISyariahPage() {
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
-  const [expandedId, setExpandedId] = useState<string | null>(null);
 
+  const [transactions, setTransactions] = useState<SyariahTransaction[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedTransaction, setSelectedTransaction] = useState<SyariahTransaction | null>(null);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [userName, setUserName] = useState("");
+  const [userRole, setUserRole] = useState("");
+  const [userPhoto, setUserPhoto] = useState<string | undefined>(undefined);
+  const [loadingUser, setLoadingUser] = useState(true);
+  const [userUid, setUserUid] = useState<string | null>(null);
+  const router = useRouter();
+
+
+  useEffect(() => {
+    const auth = getAuth();
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (user && user.uid) {
+        setUserUid(user.uid);
+        try {
+          const profile = await getUserProfile(user.uid);
+          setUserName(profile?.name || "");
+          setUserRole(profile?.role || "");
+          setUserPhoto(profile?.photo);
+        } catch {
+          setUserName("");
+          setUserRole("");
+          setUserPhoto(undefined);
+        }
+      } else {
+        setUserUid(null);
+        setUserName("");
+        setUserRole("");
+        setUserPhoto(undefined);
+      }
+      setLoadingUser(false);
+    });
+    return () => unsubscribe();
+  }, []);
+
+
+  useEffect(() => {
+    if (!loadingUser && userRole && userRole !== "umkm-amil") {
+      router.push("/login");
+    }
+  }, [loadingUser, userRole, router]);
+
+  
   useEffect(() => {
     const q = query(collection(db, "transactionReports"), orderBy("createdAt", "desc"));
     const unsubscribe = onSnapshot(q, (querySnapshot) => {
-      const reports: Transaction[] = [];
+      const reports: SyariahTransaction[] = [];
       querySnapshot.forEach((doc) => {
         const data = doc.data();
+      
+        if (!userUid || data.userId !== userUid) return;
         reports.push({
           id: doc.id,
           date: data.date,
@@ -50,6 +99,7 @@ export default function AISyariahPage() {
           shariaStatus: data.shariaStatus || 'pending',
           aiStatus: data.aiStatus,
           aiExplanation: data.aiExplanation,
+          userId: data.userId,
         });
       });
       setTransactions(reports);
@@ -58,9 +108,13 @@ export default function AISyariahPage() {
       console.error(err);
       setLoading(false);
     });
-
     return () => unsubscribe();
-  }, []);
+  }, [userUid]);
+
+  // Only return after all hooks
+  if (loadingUser || (!userRole)) {
+    return null;
+  }
 
   const handleSaveVerification = async (status: string, explanation: string) => {
     if (!selectedTransaction) return;
@@ -76,11 +130,11 @@ export default function AISyariahPage() {
     }
   };
 
-  const handleMulaiVerifikasi = (transaction: Transaction) => {
+  const handleMulaiVerifikasi = (transaction: SyariahTransaction) => {
     setSelectedTransaction(transaction);
   };
 
-  const handleItemClick = (tx: Transaction) => {
+  const handleItemClick = (tx: SyariahTransaction) => {
     if (tx.shariaStatus === 'pending') {
       handleMulaiVerifikasi(tx);
     } else {
@@ -97,10 +151,24 @@ export default function AISyariahPage() {
             isOpen={!!selectedTransaction}
             onClose={() => setSelectedTransaction(null)}
             onSave={handleSaveVerification}
-            transaction={selectedTransaction}
+            transaction={
+              selectedTransaction
+                ? {
+                    ...selectedTransaction,
+                    type:
+                      selectedTransaction.type === "income" || selectedTransaction.type === "expense"
+                        ? selectedTransaction.type
+                        : "income",
+                    shariaStatus:
+                      ["Halal", "Haram", "Syubhat"].includes(String(selectedTransaction.shariaStatus))
+                        ? (selectedTransaction.shariaStatus as "Halal" | "Haram" | "Syubhat")
+                        : undefined,
+                  }
+                : null
+            }
           />
         )}
-        <Topbar userName="UMKM Amil" userRole="Mitra" userPhoto={undefined} loading={false} />
+        <Topbar userName={userName} userRole={userRole} userPhoto={userPhoto} loading={false} />
         <div className="p-4 md:p-8 max-w-4xl mx-auto w-full">
           <div className="mb-8">
             <h1 className="text-2xl md:text-3xl font-bold text-black mb-2">Verifikasi AI Syariah</h1>
