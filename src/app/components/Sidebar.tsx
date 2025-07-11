@@ -8,6 +8,7 @@ import Link from "next/link";
 import { signOut, onAuthStateChanged } from "firebase/auth";
 import { auth } from "@/lib/firebaseApi"; // Import the initialized auth instance
 import { useEffect, useState } from "react";
+// import { getUserProfile } from "../api/service/userProfileService"; // This is the problematic import
 
 const menu = [
   { label: "Dashboard HR", icon: <LiaHomeSolid size={24} />, path: "/dashboard/hr-keuangan" },
