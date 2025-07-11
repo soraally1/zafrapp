@@ -8,7 +8,6 @@ import Topbar from '@/app/components/Topbar';
 import { FiClock, FiCheckCircle, FiChevronRight, FiFileText, FiChevronDown } from 'react-icons/fi';
 import VerificationModal from '@/app/components/VerificationModal';
 import { getAuth, onAuthStateChanged } from "firebase/auth";
-import { getUserProfile } from "@/app/api/service/userProfileService";
 import { useRouter } from "next/navigation";
 
 interface SyariahTransaction {
@@ -54,7 +53,13 @@ export default function AISyariahPage() {
       if (user && user.uid) {
         setUserUid(user.uid);
         try {
-          const profile = await getUserProfile(user.uid);
+          const token = await user.getIdToken();
+          // Fetch user profile from API
+          const res = await fetch('/api/profile', {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          let profile = null;
+          if (res.ok) profile = await res.json();
           setUserName(profile?.name || "");
           setUserRole(profile?.role || "");
           setUserPhoto(profile?.photo);
@@ -81,7 +86,7 @@ export default function AISyariahPage() {
     }
   }, [loadingUser, userRole, router]);
 
-  
+
   useEffect(() => {
     const q = query(collection(db, "transactionReports"), orderBy("createdAt", "desc"));
     const unsubscribe = onSnapshot(q, (querySnapshot) => {

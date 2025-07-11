@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { getAllUsers, deleteUser, getUser, createUser, updateUserRole } from '@/app/api/service/firebaseUserService';
 import Image from 'next/image';
 import { IoMdSearch, IoMdAdd, IoMdPerson, IoMdLogOut, IoMdClose, IoMdCheckmarkCircleOutline, IoMdPeople, IoMdBriefcase, IoMdTime } from 'react-icons/io';
 import { FiUserPlus, FiUsers, FiUserCheck, FiUser, FiAlertCircle } from 'react-icons/fi';
@@ -9,7 +8,6 @@ import Sidebar from '../../../components/Sidebar';
 import Topbar from '../../../components/Topbar';
 import { getAuth, onAuthStateChanged, signOut } from "firebase/auth";
 import { useRouter } from "next/navigation";
-import { getUserProfile } from '@/app/api/service/userProfileService';
 
 type Employee = {
   id: string;
@@ -63,17 +61,28 @@ export default function EmployeeManagement() {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user && user.uid) {
         setLoadingUser(true);
-        // Fetch real user profile from Firestore
-        const profile = await getUserProfile(user.uid);
-        if (!profile || profile.role !== 'hr-keuangan') {
+        try {
+          const token = await user.getIdToken();
+          // Fetch user profile from API
+          const res = await fetch('/api/profile', {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          if (!res.ok) throw new Error('Unauthorized');
+          const profile = await res.json();
+          if (!profile || profile.role !== 'hr-keuangan') {
+            await signOut(auth);
+            router.push('/login');
+            return;
+          }
+          setUserData({ ...profile, uid: user.uid });
+        } catch {
           await signOut(auth);
           router.push('/login');
-          return;
+        } finally {
+          setLoadingUser(false);
         }
-        setUserData({ ...profile, uid: user.uid }); // Ensure uid is always present
-        setLoadingUser(false);
       } else {
-      setLoadingUser(false);
+        setLoadingUser(false);
       }
     });
     return () => unsubscribe();
@@ -86,7 +95,15 @@ export default function EmployeeManagement() {
   const fetchEmployees = async () => {
     try {
       setLoading(true);
-      const employeeData = await getAllUsers();
+      const auth = getAuth();
+      const user = auth.currentUser;
+      if (!user) throw new Error('Not authenticated');
+      const token = await user.getIdToken();
+      const res = await fetch('/api/users', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (!res.ok) throw new Error('Failed to fetch employees');
+      const employeeData = await res.json();
       setEmployees(employeeData);
     } catch (err) {
       setError('Failed to fetch employees');
@@ -100,10 +117,17 @@ export default function EmployeeManagement() {
     if (!confirm('Are you sure you want to delete this employee?')) {
       return;
     }
-
     try {
       setDeleteLoading(employeeId);
-      const result = await deleteUser(employeeId);
+      const auth = getAuth();
+      const user = auth.currentUser;
+      if (!user) throw new Error('Not authenticated');
+      const token = await user.getIdToken();
+      const res = await fetch(`/api/users/${employeeId}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const result = await res.json();
       if (result.success) {
         setEmployees(prev => prev.filter(emp => emp.id !== employeeId));
       } else {
@@ -120,9 +144,20 @@ export default function EmployeeManagement() {
     e.preventDefault();
     setFormLoading(true);
     setFormError(null);
-
     try {
-      const result = await createUser(formData);
+      const auth = getAuth();
+      const user = auth.currentUser;
+      if (!user) throw new Error('Not authenticated');
+      const token = await user.getIdToken();
+      const res = await fetch('/api/users', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify(formData)
+      });
+      const result = await res.json();
       if (result.success) {
         await fetchEmployees();
         setModalType(null);
@@ -141,12 +176,22 @@ export default function EmployeeManagement() {
   const handleUpdateRole = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedEmployee) return;
-
     setFormLoading(true);
     setFormError(null);
-
     try {
-      const result = await updateUserRole(selectedEmployee.id, formData.role);
+      const auth = getAuth();
+      const user = auth.currentUser;
+      if (!user) throw new Error('Not authenticated');
+      const token = await user.getIdToken();
+      const res = await fetch(`/api/users/${selectedEmployee.id}/role`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ role: formData.role })
+      });
+      const result = await res.json();
       if (result.success) {
         await fetchEmployees();
         setModalType(null);

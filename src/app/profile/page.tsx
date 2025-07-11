@@ -3,7 +3,6 @@ import { useEffect, useState } from "react";
 import Image from "next/image";
 import Sidebar from "../components/Sidebar";
 import { onAuthStateChanged } from "firebase/auth";
-import { getUserProfile, updateUserProfilePhoto, updateUserHeaderPhoto, createOrUpdateProfile } from "../api/service/userProfileService";
 import { LiaMedalSolid, LiaClockSolid, LiaWalletSolid, LiaChartBarSolid, LiaUserSolid, LiaHomeSolid, LiaDonateSolid, LiaRobotSolid } from "react-icons/lia";
 import { BsStars } from "react-icons/bs";
 import { IoMdCamera } from "react-icons/io";
@@ -33,18 +32,6 @@ const mockStats = [
     subLabel: "Poin kontribusi",
     icon: <LiaUserSolid size={24} className="text-[#00C570]" />
   },
-];
-
-const mockAchievements = [
-  { id: "complete-achievement", label: "Laporan Lengkap", icon: <LiaMedalSolid size={32} className="text-yellow-400" /> },
-  { id: "ontime-achievement", label: "Tepat Waktu", icon: <LiaMedalSolid size={32} className="text-blue-400" /> },
-  { id: "active-achievement", label: "Kontributor Aktif", icon: <LiaMedalSolid size={32} className="text-purple-400" /> },
-];
-
-const mockInventory = [
-  { id: "reports-inventory", label: "Akses Laporan", icon: <LiaChartBarSolid size={28} className="text-green-400" /> },
-  { id: "payroll-inventory", label: "Fitur Payroll", icon: <LiaWalletSolid size={28} className="text-pink-400" /> },
-  { id: "zakat-inventory", label: "Fitur Zakat", icon: <BsStars size={28} className="text-yellow-400" /> },
 ];
 
 function getRoleShortcuts(role: string) {
@@ -129,7 +116,6 @@ export default function ProfilePage() {
   useEffect(() => {
     setLoading(true);
     setError("");
-    
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       if (!currentUser) {
         setError("Anda belum login.");
@@ -139,7 +125,13 @@ export default function ProfilePage() {
         return;
       }
       try {
-        const userData = await getUserProfile(currentUser.uid);
+        const token = await currentUser.getIdToken();
+        // Fetch user profile from API
+        const res = await fetch('/api/profile', {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        let userData = null;
+        if (res.ok) userData = await res.json();
         if (!userData) {
           // Create a new profile if it doesn't exist
           const basicProfile = {
@@ -147,9 +139,15 @@ export default function ProfilePage() {
             name: currentUser.displayName || currentUser.email?.split('@')[0] || 'User',
             role: 'hr-keuangan',
           };
-          
-          const result = await createOrUpdateProfile(currentUser.uid, basicProfile);
-          if (result.success) {
+          const createRes = await fetch('/api/profile', {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${token}`
+            },
+            body: JSON.stringify(basicProfile)
+          });
+          if (createRes.ok) {
             setUser({ id: currentUser.uid, ...basicProfile });
           } else {
             throw new Error("Failed to create profile");
@@ -172,18 +170,24 @@ export default function ProfilePage() {
   const handlePhotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !user?.id) return;
-    
     setUploading(true);
     setError("");
-    
     try {
       const reader = new FileReader();
       reader.onloadend = async () => {
         const base64 = reader.result as string;
-        const res = await updateUserProfilePhoto(user.id, base64);
-        if (res.success) {
-          // Update both Firestore and local state
-          await createOrUpdateProfile(user.id, { photo: base64 });
+        const token = await auth.currentUser?.getIdToken();
+        if (!token) throw new Error('Not authenticated');
+        // Update photo via API
+        const res = await fetch('/api/profile', {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`
+          },
+          body: JSON.stringify({ photo: base64 })
+        });
+        if (res.ok) {
           setUser((prev: any) => ({ ...prev, photo: base64 }));
         } else {
           setError("Gagal mengunggah foto profil.");
@@ -202,18 +206,24 @@ export default function ProfilePage() {
   const handleHeaderChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !user?.id) return;
-    
     setUploadingHeader(true);
     setError("");
-    
     try {
       const reader = new FileReader();
       reader.onloadend = async () => {
         const base64 = reader.result as string;
-        const res = await updateUserHeaderPhoto(user.id, base64);
-        if (res.success) {
-          // Update both Firestore and local state
-          await createOrUpdateProfile(user.id, { headerPhoto: base64 });
+        const token = await auth.currentUser?.getIdToken();
+        if (!token) throw new Error('Not authenticated');
+        // Update header photo via API
+        const res = await fetch('/api/profile', {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`
+          },
+          body: JSON.stringify({ headerPhoto: base64 })
+        });
+        if (res.ok) {
           setUser((prev: any) => ({ ...prev, headerPhoto: base64 }));
         } else {
           setError("Gagal mengunggah foto sampul.");

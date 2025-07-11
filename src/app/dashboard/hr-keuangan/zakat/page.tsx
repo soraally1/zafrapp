@@ -17,91 +17,8 @@ import {
 } from "chart.js";
 import { getAuth, onAuthStateChanged, signOut } from "firebase/auth";
 import { useRouter } from "next/navigation";
-import { getUserProfile } from '@/app/api/service/userProfileService';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, ArcElement, Title, Tooltip, Legend);
-
-const mockSummary = {
-  zakat: 12000000,
-  infaq: 3500000,
-  sedekah: 2000000,
-  distributed: 15000000,
-  balance: 2500000,
-};
-
-const mockTransactions = [
-  {
-    id: "TX001",
-    type: "Zakat Profesi",
-    amount: 5000000,
-    date: "2024-06-01",
-    status: "Pending",
-    laz: "LAZ Dompet Dhuafa",
-    proof: "/img/Log.svg",
-    report: "Sudah diterima oleh LAZ.",
-    beneficiary: "Dompet Dhuafa",
-    history: [
-      { action: "Created", by: "Admin", date: "2024-06-01" },
-      { action: "Submitted for Approval", by: "Admin", date: "2024-06-01" },
-    ],
-  },
-  {
-    id: "TX002",
-    type: "Infaq",
-    amount: 1500000,
-    date: "2024-06-05",
-    status: "Pending",
-    laz: "LAZ Rumah Zakat",
-    proof: null,
-    report: null,
-    beneficiary: "Rumah Zakat",
-    history: [
-      { action: "Created", by: "Admin", date: "2024-06-05" },
-    ],
-  },
-  {
-    id: "TX003",
-    type: "Sedekah",
-    amount: 2000000,
-    date: "2024-06-10",
-    status: "Distributed",
-    laz: "LAZ BAZNAS",
-    proof: "/img/Log.svg",
-    report: "Disalurkan untuk program beasiswa.",
-    beneficiary: "BAZNAS",
-    history: [
-      { action: "Created", by: "Admin", date: "2024-06-10" },
-      { action: "Approved", by: "Manager", date: "2024-06-11" },
-      { action: "Distributed", by: "Admin", date: "2024-06-12" },
-    ],
-  },
-];
-
-const mockActivities = [
-  {
-    id: "ACT001",
-    title: "Bantuan Pendidikan Anak Yatim",
-    amount: 5000000,
-    date: "2024-06-12",
-    photos: ["/img/Log.svg", "/img/Log.svg"],
-    report: "Dana disalurkan ke 20 anak yatim di Jakarta. <a href='https://example.com' target='_blank' class='text-blue-600 underline'>Lihat dokumentasi</a>",
-  },
-  {
-    id: "ACT002",
-    title: "Santunan Kesehatan Dhuafa",
-    amount: 3000000,
-    date: "2024-06-15",
-    photos: ["/img/Log.svg"],
-    report: "Bantuan kesehatan untuk 10 keluarga dhuafa.",
-  },
-];
-
-const mockAuditLog = [
-  { id: 1, action: "Login", by: "Admin", date: "2024-06-01 08:00" },
-  { id: 2, action: "Submit Zakat", by: "Admin", date: "2024-06-01 09:00" },
-  { id: 3, action: "Approve Zakat", by: "Manager", date: "2024-06-01 10:00" },
-  { id: 4, action: "Upload Proof", by: "Admin", date: "2024-06-01 11:00" },
-];
 
 const LAZ_OPTIONS = [
   "LAZ Dompet Dhuafa",
@@ -122,10 +39,9 @@ function formatCurrency(amount: number) {
 
 export default function ZakatPage() {
   // Move all hooks to the top, before any early return
+  const [userData, setUserData] = useState<any>(null);
   const [loadingUser, setLoadingUser] = useState(true);
   const router = useRouter();
-  // Role-based UI (mock: 'admin' or 'manager')
-  const [role] = useState<'admin' | 'manager'>("manager");
   // Filter/search state
   const [typeFilter, setTypeFilter] = useState<string>("");
   const [lazFilter, setLazFilter] = useState<string>("");
@@ -137,23 +53,40 @@ export default function ZakatPage() {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   // Transaction modal
   const [modalTx, setModalTx] = useState<any>(null);
-  // Notifications (mock)
-  const [notifications, setNotifications] = useState([
-    { id: 1, message: "2 transaksi menunggu persetujuan", type: "info" },
-    { id: 2, message: "1 distribusi belum upload bukti", type: "warning" },
-  ]);
   // Proof/report upload
-  const [uploadingId, setUploadingId] = useState<string | null>(null);
   const [proofs, setProofs] = useState<{ [id: string]: string }>({});
   const [reports, setReports] = useState<{ [id: string]: string }>({});
-  const [approvalNotes, setApprovalNotes] = useState<{ [id: string]: string }>({});
+  const [transactions, setTransactions] = useState<any[]>([]);
+  const [loadingTx, setLoadingTx] = useState(true);
+  const [lazOptions, setLazOptions] = useState(LAZ_OPTIONS);
+  const [newLaz, setNewLaz] = useState('');
+  const [csrActivities, setCsrActivities] = useState<any[]>([]);
+  const [auditLog, setAuditLog] = useState<any[]>([]);
+  const [analytics, setAnalytics] = useState<any>(null);
+  const [loadingAnalytics, setLoadingAnalytics] = useState(true);
+  const [showCsrForm, setShowCsrForm] = useState(false);
+  const [csrForm, setCsrForm] = useState({ title: '', amount: '', date: '', photos: '', report: '' });
+  const [csrFormLoading, setCsrFormLoading] = useState(false);
 
   useEffect(() => {
     const auth = getAuth();
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user && user.uid) {
-        const profile = await getUserProfile(user.uid);
-        if (!profile || profile.role !== 'hr-keuangan') {
+        try {
+          const token = await user.getIdToken();
+          // Fetch user profile from API
+          const res = await fetch('/api/profile', {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          if (!res.ok) throw new Error('Unauthorized');
+          const profile = await res.json();
+          if (!profile || profile.role !== 'hr-keuangan') {
+            await signOut(auth);
+            router.push('/login');
+            return;
+          }
+          setUserData({ ...profile, uid: user.uid });
+        } catch {
           await signOut(auth);
           router.push('/login');
           return;
@@ -164,9 +97,81 @@ export default function ZakatPage() {
     return () => unsubscribe();
   }, []);
 
+  useEffect(() => {
+    if (!loadingUser) {
+      const fetchZakatPayments = async () => {
+        setLoadingTx(true);
+        try {
+          const auth = getAuth();
+          const user = auth.currentUser;
+          if (!user) return;
+          const token = await user.getIdToken();
+          const res = await fetch('/api/zakat-payments', {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          if (res.ok) {
+            const data = await res.json();
+            setTransactions(data.data || []);
+          }
+        } finally {
+          setLoadingTx(false);
+        }
+      };
+      fetchZakatPayments();
+    }
+  }, [loadingUser]);
+
+  // Fetch CSR activities
+  useEffect(() => {
+    const fetchCsr = async () => {
+      try {
+        const res = await fetch('/api/csr-activities');
+        if (res.ok) {
+          const data = await res.json();
+          setCsrActivities(data.data || []);
+        }
+      } catch {}
+    };
+    fetchCsr();
+  }, []);
+
+  // Fetch audit log
+  useEffect(() => {
+    const fetchAudit = async () => {
+      try {
+        const res = await fetch('/api/audit-log');
+        if (res.ok) {
+          const data = await res.json();
+          setAuditLog(data.data || []);
+        }
+      } catch {}
+    };
+    fetchAudit();
+  }, []);
+
+  // Fetch analytics for charts
+  useEffect(() => {
+    setLoadingAnalytics(true);
+    const fetchAnalytics = async () => {
+      try {
+        const res = await fetch('/api/zakat-analytics');
+        if (res.ok) {
+          const data = await res.json();
+          setAnalytics(data);
+        }
+      } finally {
+        setLoadingAnalytics(false);
+      }
+    };
+    fetchAnalytics();
+  }, []);
+
+  // For LAZ filter, generate options from real data
+  const lazOptionsFromData = Array.from(new Set(transactions.map(tx => tx.laz).filter(Boolean)));
+
   // Filtering logic
   const filteredTx = useMemo(() => {
-    return mockTransactions.filter((tx) => {
+    return transactions.filter((tx) => {
       if (typeFilter && tx.type !== typeFilter) return false;
       if (lazFilter && tx.laz !== lazFilter) return false;
       if (statusFilter && tx.status !== statusFilter) return false;
@@ -174,47 +179,73 @@ export default function ZakatPage() {
       if (dateTo && tx.date > dateTo) return false;
       if (search && !(
         tx.id.toLowerCase().includes(search.toLowerCase()) ||
-        tx.beneficiary.toLowerCase().includes(search.toLowerCase()) ||
-        tx.type.toLowerCase().includes(search.toLowerCase())
+        (tx.beneficiary || '').toLowerCase().includes(search.toLowerCase()) ||
+        (tx.type || '').toLowerCase().includes(search.toLowerCase())
       )) return false;
       return true;
     });
-  }, [typeFilter, lazFilter, statusFilter, dateFrom, dateTo, search]);
+  }, [transactions, typeFilter, lazFilter, statusFilter, dateFrom, dateTo, search]);
+
+  const handleCsrFormSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setCsrFormLoading(true);
+    try {
+      const res = await fetch('/api/csr-activities', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: csrForm.title,
+          amount: Number(csrForm.amount),
+          date: csrForm.date,
+          photos: csrForm.photos.split(',').map((s) => s.trim()).filter(Boolean),
+          report: csrForm.report
+        })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setCsrActivities([{ id: data.id, ...csrForm, amount: Number(csrForm.amount), photos: csrForm.photos.split(',').map((s) => s.trim()).filter(Boolean) }, ...csrActivities]);
+        setShowCsrForm(false);
+        setCsrForm({ title: '', amount: '', date: '', photos: '', report: '' });
+      }
+    } finally {
+      setCsrFormLoading(false);
+    }
+  };
 
   if (loadingUser) {
     return <div className="flex items-center justify-center min-h-screen bg-[#F6F8FA]"><div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#00C570]"></div></div>;
   }
 
-  // Analytics data
-  const monthlyData = {
-    labels: ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun"],
+  // Chart data
+  const monthlyData = analytics && analytics.monthly ? {
+    labels: Object.keys(analytics.monthly),
     datasets: [
       {
         label: "Dana Didistribusikan",
-        data: [2000000, 3000000, 4000000, 3500000, 5000000, 6000000],
+        data: Object.values(analytics.monthly),
         backgroundColor: "#00C570",
         borderRadius: 8,
       },
     ],
-  };
-  const lazPieData = {
-    labels: LAZ_OPTIONS,
+  } : { labels: [], datasets: [] };
+  const lazPieData = analytics && analytics.perLaz ? {
+    labels: Object.keys(analytics.perLaz),
     datasets: [
       {
-        data: [7, 5, 3],
-        backgroundColor: ["#3B82F6", "#22C55E", "#A78BFA"],
+        data: Object.values(analytics.perLaz),
+        backgroundColor: ["#3B82F6", "#22C55E", "#A78BFA", "#F59E42", "#FACC15"],
       },
     ],
-  };
-  const allocationPieData = {
+  } : { labels: [], datasets: [] };
+  const allocationPieData = analytics && analytics.allocation ? {
     labels: ["Zakat", "Infaq", "Sedekah"],
     datasets: [
       {
-        data: [mockSummary.zakat, mockSummary.infaq, mockSummary.sedekah],
+        data: [analytics.allocation.zakat, analytics.allocation.infaq, analytics.allocation.sedekah],
         backgroundColor: ["#3B82F6", "#22C55E", "#FACC15"],
       },
     ],
-  };
+  } : { labels: [], datasets: [] };
 
   // Bulk actions
   const handleSelectAll = (checked: boolean) => {
@@ -223,101 +254,98 @@ export default function ZakatPage() {
   const handleSelectOne = (id: string, checked: boolean) => {
     setSelectedIds((prev) => checked ? [...prev, id] : prev.filter((x) => x !== id));
   };
-  const handleBulkApprove = () => {
-    // Mock: approve all selected
-    setNotifications((prev) => [
-      ...prev,
-      { id: Date.now(), message: `${selectedIds.length} transaksi disetujui`, type: "success" },
-    ]);
-    setSelectedIds([]);
-  };
-  const handleBulkReject = () => {
-    setNotifications((prev) => [
-      ...prev,
-      { id: Date.now(), message: `${selectedIds.length} transaksi ditolak`, type: "error" },
-    ]);
-    setSelectedIds([]);
-  };
 
-  // Proof upload
-  const handleProofUpload = (id: string, file: File) => {
-    setUploadingId(id);
-    setTimeout(() => {
-      setProofs((prev) => ({ ...prev, [id]: URL.createObjectURL(file) }));
-      setUploadingId(null);
-    }, 1200);
-  };
-  // Report submit
-  const handleReportSubmit = (id: string, text: string) => {
-    setReports((prev) => ({ ...prev, [id]: text }));
-  };
-  // Approval workflow
-  const handleApprove = (id: string) => {
-    setNotifications((prev) => [
-      ...prev,
-      { id: Date.now(), message: `Transaksi ${id} disetujui`, type: "success" },
-    ]);
-    setModalTx(null);
-  };
-  const handleReject = (id: string) => {
-    setNotifications((prev) => [
-      ...prev,
-      { id: Date.now(), message: `Transaksi ${id} ditolak`, type: "error" },
-    ]);
-    setModalTx(null);
-  };
-
-  // Export/reporting (mock)
-  const handleExport = () => {
-    setNotifications((prev) => [
-      ...prev,
-      { id: Date.now(), message: `Data diekspor ke Excel`, type: "info" },
-    ]);
+  const handleForwardToLAZ = async (zakatPaymentId: string, laz: string) => {
+    try {
+      const auth = getAuth();
+      const user = auth.currentUser;
+      if (!user) return;
+      const token = await user.getIdToken();
+      await fetch('/api/zakat-payments', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ zakatPaymentId, laz })
+      });
+      // Refetch payments
+      const res = await fetch('/api/zakat-payments', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setTransactions(data.data || []);
+      }
+      setModalTx(null);
+    } catch {
+    }
   };
 
   return (
     <div className="min-h-screen bg-[#F6F8FA] flex">
       <Sidebar active="Zakat" />
       <main className="flex-1 flex flex-col min-h-screen overflow-x-auto">
-        <Topbar userName="Zakat Manager" userRole={role === 'manager' ? 'Manager' : 'Admin'} userPhoto={undefined} loading={false} />
+        <Topbar userName={userData?.name || "Zakat Manager"} userRole={userData?.role === 'manager' ? 'Manager' : userData?.role || 'Admin'} userPhoto={userData?.photo} loading={loadingUser} />
         <div className="p-4 md:p-8 max-w-7xl mx-auto w-full">
-          {/* Notifications */}
-          {notifications.length > 0 && (
-            <div className="mb-4 space-y-2">
-              {notifications.map((n) => (
-                <div key={n.id} className={`flex items-center gap-2 px-4 py-2 rounded-xl shadow text-white font-semibold ${n.type === 'success' ? 'bg-green-600' : n.type === 'error' ? 'bg-red-600' : n.type === 'warning' ? 'bg-yellow-500' : 'bg-blue-600'}`}>
-                  {n.type === 'success' && <FiCheckCircle />} {n.type === 'error' && <FiX />} {n.type === 'warning' && <FiAlertCircle />} {n.type === 'info' && <FiClock />} {n.message}
-                </div>
-              ))}
-            </div>
-          )}
-
           <div className="mb-8 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div>
               <h1 className="text-2xl md:text-3xl font-bold text-gray-800 mb-2">Distribusi Dana Sosial & Zakat</h1>
               <p className="text-gray-600">Kelola zakat profesi, infaq, sedekah, dan distribusi dana sosial secara otomatis dan transparan.</p>
             </div>
             <div className="flex gap-2">
-              <button onClick={handleExport} className="flex items-center gap-2 px-4 py-2 bg-[#00C570] text-white rounded-xl shadow hover:bg-green-700 transition font-semibold"><FiDownload /> Export Excel</button>
+              <button onClick={() => { /* handleExport */ }} className="flex items-center gap-2 px-4 py-2 bg-[#00C570] text-white rounded-xl shadow hover:bg-green-700 transition font-semibold"><FiDownload /> Export Excel</button>
               <button className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-xl shadow hover:bg-blue-700 transition font-semibold"><FiDownload /> Export PDF</button>
             </div>
           </div>
 
+          {/* Add summary card at the top */}
+          {analytics && (
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-8">
+              <div className="bg-gradient-to-br from-green-100 to-green-50 rounded-xl p-4 flex flex-col items-center shadow-sm">
+                <div className="text-xs text-gray-500 mb-1">Total Zakat</div>
+                <div className="text-lg font-bold text-green-700">{formatCurrency(analytics.allocation?.zakat || 0)}</div>
+              </div>
+              <div className="bg-gradient-to-br from-blue-100 to-blue-50 rounded-xl p-4 flex flex-col items-center shadow-sm">
+                <div className="text-xs text-gray-500 mb-1">Total Infaq</div>
+                <div className="text-lg font-bold text-blue-700">{formatCurrency(analytics.allocation?.infaq || 0)}</div>
+              </div>
+              <div className="bg-gradient-to-br from-yellow-100 to-yellow-50 rounded-xl p-4 flex flex-col items-center shadow-sm">
+                <div className="text-xs text-gray-500 mb-1">Total Sedekah</div>
+                <div className="text-lg font-bold text-yellow-700">{formatCurrency(analytics.allocation?.sedekah || 0)}</div>
+              </div>
+              <div className="bg-gradient-to-br from-emerald-100 to-emerald-50 rounded-xl p-4 flex flex-col items-center shadow-sm">
+                <div className="text-xs text-gray-500 mb-1">Didistribusikan</div>
+                <div className="text-lg font-bold text-emerald-700">{formatCurrency(analytics.distributed || 0)}</div>
+              </div>
+              <div className="bg-gradient-to-br from-gray-100 to-gray-50 rounded-xl p-4 flex flex-col items-center shadow-sm">
+                <div className="text-xs text-gray-500 mb-1">Saldo</div>
+                <div className="text-lg font-bold text-gray-700">{formatCurrency(analytics.balance || 0)}</div>
+              </div>
+            </div>
+          )}
+
+          {/* Add section dividers */}
+          <hr className="my-8 border-t-2 border-dashed border-gray-200" />
+
           {/* Analytics & Charts */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-            <div className="bg-white rounded-xl shadow-sm p-4 flex flex-col gap-2">
+            <div className="bg-white rounded-xl shadow-md p-4 flex flex-col gap-2 hover:shadow-lg transition-shadow">
               <div className="font-semibold text-gray-700 mb-1">Trend Distribusi Bulanan</div>
               <Bar data={monthlyData} options={{ responsive: true, plugins: { legend: { display: false } } }} height={120} />
             </div>
-            <div className="bg-white rounded-xl shadow-sm p-4 flex flex-col gap-2">
+            <div className="bg-white rounded-xl shadow-md p-4 flex flex-col gap-2 hover:shadow-lg transition-shadow">
               <div className="font-semibold text-gray-700 mb-1">Distribusi per LAZ</div>
               <Pie data={lazPieData} options={{ plugins: { legend: { position: 'bottom' } } }} />
             </div>
-            <div className="bg-white rounded-xl shadow-sm p-4 flex flex-col gap-2">
+            <div className="bg-white rounded-xl shadow-md p-4 flex flex-col gap-2 hover:shadow-lg transition-shadow">
               <div className="font-semibold text-gray-700 mb-1">Alokasi Dana</div>
               <Pie data={allocationPieData} options={{ plugins: { legend: { position: 'bottom' } } }} />
             </div>
           </div>
+
+          {/* Add section dividers */}
+          <hr className="my-8 border-t-2 border-dashed border-gray-200" />
 
           {/* Filter/Search Controls */}
           <div className="bg-white rounded-xl shadow-sm p-4 mb-8 flex flex-wrap gap-3 items-center">
@@ -333,7 +361,7 @@ export default function ZakatPage() {
               </select>
               <select className="px-2 py-1 border rounded" value={lazFilter} onChange={e => setLazFilter(e.target.value)}>
                 <option value="">Semua LAZ</option>
-                {LAZ_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                {lazOptionsFromData.map(opt => <option key={opt} value={opt}>{opt}</option>)}
               </select>
               <select className="px-2 py-1 border rounded" value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
                 <option value="">Semua Status</option>
@@ -349,21 +377,19 @@ export default function ZakatPage() {
           </div>
 
           {/* Bulk Actions */}
-          {role === 'manager' && filteredTx.some(tx => tx.status === 'Pending') && (
+          {userData?.role === 'manager' && filteredTx.some(tx => tx.status === 'Pending') && (
             <div className="mb-4 flex gap-2 items-center">
               <input type="checkbox" checked={selectedIds.length === filteredTx.filter(tx => tx.status === 'Pending').length} onChange={e => handleSelectAll(e.target.checked)} />
               <span className="text-sm">Pilih semua transaksi pending</span>
-              <button onClick={handleBulkApprove} className="bg-green-600 text-white px-3 py-1 rounded text-xs font-semibold">Setujui Semua</button>
-              <button onClick={handleBulkReject} className="bg-red-600 text-white px-3 py-1 rounded text-xs font-semibold">Tolak Semua</button>
             </div>
           )}
 
           {/* Transactions Table */}
-          <div className="bg-white rounded-xl shadow-sm overflow-x-auto mb-10">
+          <div className="bg-white rounded-xl shadow-md overflow-x-auto mb-10">
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-gray-500 border-b border-gray-100">
-                  {role === 'manager' && <th className="px-2 py-3 text-center"><input type="checkbox" checked={selectedIds.length === filteredTx.filter(tx => tx.status === 'Pending').length && filteredTx.filter(tx => tx.status === 'Pending').length > 0} onChange={e => handleSelectAll(e.target.checked)} /></th>}
+                  {userData?.role === 'manager' && <th className="px-2 py-3 text-center"><input type="checkbox" checked={selectedIds.length === filteredTx.filter(tx => tx.status === 'Pending').length && filteredTx.filter(tx => tx.status === 'Pending').length > 0} onChange={e => handleSelectAll(e.target.checked)} /></th>}
                   <th className="px-4 py-3 text-left font-medium">Tanggal</th>
                   <th className="px-4 py-3 text-left font-medium">Jenis</th>
                   <th className="px-4 py-3 text-right font-medium">Nominal</th>
@@ -374,8 +400,8 @@ export default function ZakatPage() {
               </thead>
               <tbody>
                 {filteredTx.map((tx) => (
-                  <tr key={tx.id} className="border-b border-gray-50 hover:bg-gray-50 transition">
-                    {role === 'manager' && (
+                  <tr key={tx.id} className="border-b border-gray-50 hover:bg-emerald-50/40 transition">
+                    {userData?.role === 'manager' && (
                       <td className="px-2 py-3 text-center">
                         {tx.status === 'Pending' && <input type="checkbox" checked={selectedIds.includes(tx.id)} onChange={e => handleSelectOne(tx.id, e.target.checked)} />}
                       </td>
@@ -388,6 +414,10 @@ export default function ZakatPage() {
                       {tx.status === "Distributed" ? (
                         <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-green-50 text-green-600">
                           <FiCheckCircle className="text-green-500" /> Didistribusikan
+                        </span>
+                      ) : tx.zakatPaid ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-600">
+                          <FiCheckCircle className="text-blue-500" /> Sudah Dibayar
                         </span>
                       ) : (
                         <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-yellow-50 text-yellow-600">
@@ -403,6 +433,9 @@ export default function ZakatPage() {
               </tbody>
             </table>
           </div>
+
+          {/* Add section dividers */}
+          <hr className="my-8 border-t-2 border-dashed border-gray-200" />
 
           {/* Transaction Detail Modal */}
           {modalTx && (
@@ -437,21 +470,52 @@ export default function ZakatPage() {
                     ))}
                   </ul>
                 </div>
-                {role === 'manager' && modalTx.status === 'Pending' && (
-                  <div className="flex gap-2 mt-4">
-                    <input type="text" placeholder="Catatan persetujuan (opsional)" className="px-2 py-1 border rounded flex-1" value={approvalNotes[modalTx.id] || ''} onChange={e => setApprovalNotes(prev => ({ ...prev, [modalTx.id]: e.target.value }))} />
-                    <button onClick={() => handleApprove(modalTx.id)} className="bg-green-600 text-white px-4 py-2 rounded-xl font-semibold flex items-center gap-2"><FiCheck /> Setujui</button>
-                    <button onClick={() => handleReject(modalTx.id)} className="bg-red-600 text-white px-4 py-2 rounded-xl font-semibold flex items-center gap-2"><FiX /> Tolak</button>
-                  </div>
+                {userData?.role === 'manager' && modalTx.zakatPaid && modalTx.status !== 'Distributed' && (
+                  <form className="flex flex-col gap-3 mt-4" onSubmit={async e => {
+                    e.preventDefault();
+                    const auth = getAuth();
+                    const user = auth.currentUser;
+                    if (!user) return;
+                    const token = await user.getIdToken();
+                    await fetch('/api/zakat-payments', {
+                      method: 'PUT',
+                      headers: {
+                        'Content-Type': 'application/json',
+                        Authorization: `Bearer ${token}`
+                      },
+                      body: JSON.stringify({
+                        zakatPaymentId: modalTx.id,
+                        status: 'Distributed',
+                        beneficiary: modalTx.beneficiary,
+                        proof: modalTx.proof,
+                        report: modalTx.report
+                      })
+                    });
+                    // Refetch payments or update UI
+                    setModalTx({ ...modalTx, status: 'Distributed' });
+                  }}>
+                    <label className="text-sm font-bold text-gray-700">Penerima</label>
+                    <input type="text" className="px-2 py-1 border rounded" value={modalTx.beneficiary || ''} onChange={e => setModalTx({ ...modalTx, beneficiary: e.target.value })} />
+                    <label className="text-sm font-bold text-gray-700">Bukti Transfer (URL)</label>
+                    <input type="text" className="px-2 py-1 border rounded" value={modalTx.proof || ''} onChange={e => setModalTx({ ...modalTx, proof: e.target.value })} />
+                    <label className="text-sm font-bold text-gray-700">Laporan Penyaluran</label>
+                    <textarea className="px-2 py-1 border rounded" value={modalTx.report || ''} onChange={e => setModalTx({ ...modalTx, report: e.target.value })} />
+                    <button type="submit" className="bg-green-600 text-white px-4 py-2 rounded-xl font-semibold flex items-center gap-2 mt-2">
+                      <FiCheck /> Salurkan
+                    </button>
+                  </form>
                 )}
               </div>
             </div>
           )}
 
+          {/* Add section dividers */}
+          <hr className="my-8 border-t-2 border-dashed border-gray-200" />
+
           {/* Audit Log */}
           <div className="mb-8">
             <h2 className="text-xl font-bold mb-4 text-gray-800">Audit Log</h2>
-            <div className="bg-white rounded-xl shadow-sm p-4 overflow-x-auto">
+            <div className="bg-white rounded-xl shadow-md p-4 overflow-x-auto">
               <table className="w-full text-xs">
                 <thead>
                   <tr className="text-gray-500 border-b border-gray-100">
@@ -461,8 +525,8 @@ export default function ZakatPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {mockAuditLog.map((log) => (
-                    <tr key={log.id} className="border-b border-gray-50">
+                  {auditLog.map((log) => (
+                    <tr key={log.id} className="border-b border-gray-50 hover:bg-blue-50/40 transition">
                       <td className="px-4 py-2">{log.date}</td>
                       <td className="px-4 py-2">{log.action}</td>
                       <td className="px-4 py-2">{log.by}</td>
@@ -473,19 +537,40 @@ export default function ZakatPage() {
             </div>
           </div>
 
+          {/* Add section dividers */}
+          <hr className="my-8 border-t-2 border-dashed border-gray-200" />
+
           {/* CSR Dashboard */}
           <div className="mb-8">
-            <h2 className="text-xl font-bold mb-4 text-gray-800">Dashboard CSR & Kegiatan Sosial</h2>
+            <h2 className="text-xl font-bold mb-4 text-gray-800 flex items-center gap-2">
+              Dashboard CSR & Kegiatan Sosial
+              <button onClick={() => setShowCsrForm((v) => !v)} className="ml-2 px-3 py-1 bg-green-600 text-white rounded text-sm font-semibold hover:bg-green-700 transition">{showCsrForm ? 'Tutup' : 'Tambah'}</button>
+            </h2>
+            {showCsrForm && (
+              <form onSubmit={handleCsrFormSubmit} className="bg-white rounded-xl shadow-md p-5 mb-6 flex flex-col gap-3">
+                <div className="flex gap-3">
+                  <input type="text" className="flex-1 px-2 py-1 border rounded" placeholder="Judul" value={csrForm.title} onChange={e => setCsrForm(f => ({ ...f, title: e.target.value }))} required />
+                  <input type="number" className="w-32 px-2 py-1 border rounded" placeholder="Nominal" value={csrForm.amount} onChange={e => setCsrForm(f => ({ ...f, amount: e.target.value }))} required />
+                  <input type="date" className="w-40 px-2 py-1 border rounded" value={csrForm.date} onChange={e => setCsrForm(f => ({ ...f, date: e.target.value }))} required />
+                </div>
+                <input type="text" className="px-2 py-1 border rounded" placeholder="Foto (URL, pisahkan dengan koma)" value={csrForm.photos} onChange={e => setCsrForm(f => ({ ...f, photos: e.target.value }))} />
+                <textarea className="px-2 py-1 border rounded" placeholder="Laporan / Keterangan" value={csrForm.report} onChange={e => setCsrForm(f => ({ ...f, report: e.target.value }))} />
+                <div className="flex gap-2 justify-end">
+                  <button type="button" className="px-4 py-2 border rounded" onClick={() => setShowCsrForm(false)} disabled={csrFormLoading}>Batal</button>
+                  <button type="submit" className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition" disabled={csrFormLoading}>{csrFormLoading ? 'Menyimpan...' : 'Simpan'}</button>
+                </div>
+              </form>
+            )}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {mockActivities.map((act) => (
-                <div key={act.id} className="bg-white rounded-xl shadow-sm p-5 flex flex-col gap-3">
+              {csrActivities.map((act) => (
+                <div key={act.id} className="bg-white rounded-xl shadow-md p-5 flex flex-col gap-3 hover:shadow-lg transition-shadow">
                   <div className="flex items-center gap-3 mb-2">
                     <span className="inline-block px-2 py-1 rounded-full bg-[#E6FFF4] text-[#00C570] text-xs font-semibold">{act.date}</span>
                     <span className="font-bold text-gray-800">{act.title}</span>
                   </div>
                   <div className="text-gray-600 text-sm mb-2">Dana: <b className="text-[#00C570]">{formatCurrency(act.amount)}</b></div>
                   <div className="flex gap-2 mb-2">
-                    {act.photos.map((src, idx) => (
+                    {(act.photos || []).map((src: string, idx: number) => (
                       <Image key={idx} src={src} alt="Dokumentasi" width={80} height={60} className="rounded-lg border" />
                     ))}
                   </div>

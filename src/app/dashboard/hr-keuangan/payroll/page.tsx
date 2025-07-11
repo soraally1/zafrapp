@@ -19,7 +19,6 @@ import {
 import { usePayrollPageLogic } from './payrollLogic';
 import { getAuth, onAuthStateChanged, signOut } from "firebase/auth";
 import { useRouter } from "next/navigation";
-import { getUserProfile } from '@/app/api/service/userProfileService';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
@@ -104,12 +103,8 @@ export default function PayrollPage() {
     const auth = getAuth();
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user && user.uid) {
-        const profile = await getUserProfile(user.uid);
-        if (!profile || profile.role !== 'hr-keuangan') {
-          await signOut(auth);
-          router.push('/login');
-          return;
-        }
+        // No need to fetch profile here, handled in usePayrollPageLogic
+        // Just check if user is authenticated
       }
       setLoadingUser(false);
     });

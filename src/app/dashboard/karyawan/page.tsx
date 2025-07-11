@@ -20,8 +20,6 @@ import Sidebar from "../../components/Sidebar"
 import type React from "react"
 import Topbar from "../../components/Topbar"
 import { getAuth, onAuthStateChanged } from "firebase/auth"
-import { getUserProfile } from "@/app/api/service/userProfileService"
-import { getUserPayroll, markZakatPaid } from "@/app/api/service/payrollService"
 import { useRouter } from "next/navigation"
 
 // Updated Button Component with Islamic styling
@@ -288,9 +286,9 @@ function Calendar({ selectedDate, onDateSelect }: CalendarProps) {
       </div>
 
       <div className="grid grid-cols-7 gap-1 mb-3">
-        {dayNames.map((day) => (
+        {dayNames.map((day, idx) => (
           <div
-            key={day}
+            key={day + idx}
             className="text-center text-sm font-bold text-emerald-700 h-10 flex items-center justify-center"
           >
             {day}
@@ -349,56 +347,162 @@ export default function KaryawanDashboard() {
   const [payroll, setPayroll] = useState<any>(null)
   const [payrollLoading, setPayrollLoading] = useState(true)
   const router = useRouter()
-  const [zakatPaymentMethod, setZakatPaymentMethod] = useState("")
-  const [zakatPaying, setZakatPaying] = useState(false)
+  const [zakatPayment, setZakatPayment] = useState<any>(null);
+  const LAZ_OPTIONS = [
+    "LAZ Dompet Dhuafa",
+    "LAZ Rumah Zakat",
+    "LAZ BAZNAS",
+    "LAZ NU Care-LAZISNU",
+    "LAZIS Muhammadiyah",
+  ];
+  const JENIS_OPTIONS = ["Zakat Profesi", "Infaq", "Sedekah"];
+  const [selectedLaz, setSelectedLaz] = useState("");
+  const [selectedJenis, setSelectedJenis] = useState("");
+  const PAYMENT_METHODS = [
+    { value: 'bank', label: 'Bank Transfer' },
+    { value: 'ewallet', label: 'E-Wallet' },
+    { value: 'cash', label: 'Cash' },
+  ];
+  const [paymentMethod, setPaymentMethod] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
+  const [zakatPaying, setZakatPaying] = useState(false);
 
   useEffect(() => {
-    const auth = getAuth()
+    const auth = getAuth();
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user && user.uid) {
         try {
-          const profile = await getUserProfile(user.uid)
-          setUserName(profile?.name || "")
-          setUserRole(profile?.role || "")
-          setUserPhoto(profile?.photo)
+          const token = await user.getIdToken();
+          // Fetch user profile from API
+          const res = await fetch('/api/profile', {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          let profile = null;
+          if (res.ok) profile = await res.json();
+          setUserName(profile?.name || "");
+          setUserRole(profile?.role || "");
+          setUserPhoto(profile?.photo);
         } catch {
-          setUserName("")
-          setUserRole("")
-          setUserPhoto(undefined)
+          setUserName("");
+          setUserRole("");
+          setUserPhoto(undefined);
         }
       } else {
-        setUserName("")
-        setUserRole("")
-        setUserPhoto(undefined)
+        setUserName("");
+        setUserRole("");
+        setUserPhoto(undefined);
       }
-      setLoadingUser(false)
-    })
-    return () => unsubscribe()
-  }, [])
+      setLoadingUser(false);
+    });
+    return () => unsubscribe();
+  }, []);
 
   const fetchPayroll = async (userId: string, month: string) => {
-    setPayrollLoading(true)
+    setPayrollLoading(true);
     try {
-      const res = await getUserPayroll(userId, month)
-      if (res.success) {
-        setPayroll(res.data)
+      const user = getAuth().currentUser;
+      if (!user) return;
+      const token = await user.getIdToken();
+      const res = await fetch(`/api/payroll?userId=${userId}&month=${month}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setPayroll(data);
       }
     } catch {
       // Handle error
     } finally {
-      setPayrollLoading(false)
+      setPayrollLoading(false);
     }
-  }
+  };
+
+  const handleMarkZakatPaid = async () => {
+    if (!payroll) return;
+    if (!payroll.id) return;
+    if (!selectedLaz || !selectedJenis || !paymentMethod) return;
+    try {
+      setZakatPaying(true);
+      const user = getAuth().currentUser;
+      if (!user) return;
+      const token = await user.getIdToken();
+      // Mark zakat as paid in zakatPayments
+      await fetch(`/api/payroll/mark-zakat-paid`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ userId: user.uid, month: new Date().toISOString().slice(0, 7) })
+      });
+      // Log zakat payment for HR with LAZ, Jenis, and payment method
+      const res = await fetch('/api/zakat-payments', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          payrollId: payroll.id,
+          month: payroll.month,
+          amount: payroll.zakat,
+          laz: selectedLaz,
+          type: selectedJenis,
+          paymentMethod: paymentMethod
+        })
+      });
+      if (res.status === 409) {
+        setSuccessMessage("Anda sudah menunaikan zakat untuk periode ini.");
+        // Refetch zakatPayment to update UI
+        const now = new Date();
+        const month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+        const userId = user.uid;
+        await fetchZakatPayment(userId, month);
+        setTimeout(() => setSuccessMessage(""), 4000);
+        setZakatPaying(false);
+        return;
+      }
+      setSelectedLaz("");
+      setSelectedJenis("");
+      setPaymentMethod("");
+      setSuccessMessage("Pembayaran zakat berhasil! Terima kasih telah menunaikan zakat.");
+      // Refetch payroll and zakatPayment to update status
+      const now = new Date();
+      const month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+      const userId = user.uid;
+      await fetchPayroll(userId, month);
+      await fetchZakatPayment(userId, month);
+      setTimeout(() => setSuccessMessage(""), 4000);
+    } catch {
+      // Handle error
+    } finally {
+      setZakatPaying(false);
+    }
+  };
+
+  // Fetch zakatPayments for this user/month on mount and after payment
+  const fetchZakatPayment = async (userId: string, month: string) => {
+    try {
+      const user = getAuth().currentUser;
+      if (!user) return;
+      const token = await user.getIdToken();
+      const res = await fetch(`/api/zakat-payments?userId=${userId}&month=${month}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setZakatPayment(data.data?.[0] || null);
+      }
+    } catch {}
+  };
 
   useEffect(() => {
-    if (!userName || !userRole || loadingUser) return
-    const now = new Date()
-    const month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`
-    const auth = getAuth()
-    const user = auth.currentUser
-    if (!user) return
-    fetchPayroll(user.uid, month)
-  }, [userName, userRole, loadingUser])
+    if (!userName || !userRole || loadingUser) return;
+    const now = new Date();
+    const month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+    const auth = getAuth();
+    const user = auth.currentUser;
+    if (!user) return;
+    fetchPayroll(user.uid, month);
+    fetchZakatPayment(user.uid, month);
+  }, [userName, userRole, loadingUser]);
 
   useEffect(() => {
     if (!loadingUser && userRole && userRole !== "karyawan") {
@@ -416,41 +520,16 @@ export default function KaryawanDashboard() {
     { date: "2024-01-25", title: "Gajian", type: "salary" },
   ]
 
-  const handleMarkZakatPaid = async () => {
-    if (!payroll?.id) return
-    try {
-      const auth = getAuth()
-      const user = auth.currentUser
-      if (!user) return
-      const now = new Date()
-      const month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`
-      const success = await markZakatPaid(payroll.id)
-      if (success) {
-        setPayroll((prev: any) => ({ ...prev, zakatPaid: true }))
-        await fetchPayroll(user.uid, month)
-      } else {
-        alert("Gagal memperbarui status zakat. Silakan coba lagi.")
-      }
-    } catch (e) {
-      alert("Terjadi kesalahan saat memperbarui status zakat.")
-    }
-  }
-
-  const handleSimulateZakatPayment = async () => {
-    setZakatPaying(true)
-    setTimeout(async () => {
-      await handleMarkZakatPaid()
-      setZakatPaying(false)
-    }, 1500)
-  }
-
   const GOLD_PRICE_PER_GRAM = 1350000
   const NISAB_GRAM = 85
   const nisab = GOLD_PRICE_PER_GRAM * NISAB_GRAM
   const currentMonth = new Date().getMonth() + 1
   const yearToDateSavings = (payroll?.netSalary || 0) * (new Date().getMonth() + 1)
-  const zakatPaid = payroll?.zakatPaid === true
+  const zakatPaid = zakatPayment?.zakatPaid === true;
   const zakatDue = payroll?.zakat > 0 && !zakatPaid
+
+  // Debug log for zakatPayment and zakatPaid
+  console.log('zakatPayment:', zakatPayment, 'zakatPaid:', zakatPaid);
 
   if (payrollLoading) {
     return (
@@ -742,27 +821,47 @@ export default function KaryawanDashboard() {
                         <h4 className="font-bold text-amber-800 mb-4 text-center">Tunaikan Zakat Anda</h4>
                         <div className="space-y-4">
                           <div>
-                            <label className="block text-sm font-bold text-amber-800 mb-2">
-                              Pilih Metode Pembayaran
-                            </label>
+                            <label className="block text-sm font-bold text-amber-800 mb-2">Pilih LAZ Tujuan</label>
                             <select
                               className="w-full px-4 py-3 border-2 border-amber-300 rounded-lg bg-white text-amber-800 font-medium focus:border-amber-500 focus:ring-2 focus:ring-amber-200"
-                              value={zakatPaymentMethod}
-                              onChange={(e) => setZakatPaymentMethod(e.target.value)}
+                              value={selectedLaz}
+                              onChange={e => setSelectedLaz(e.target.value)}
                               disabled={zakatPaying}
                             >
-                              <option value="">-- Pilih Metode --</option>
-                              <option value="bank">Bank Transfer</option>
-                              <option value="ewallet">E-Wallet</option>
-                              <option value="cash">Cash</option>
+                              <option value="">-- Pilih LAZ --</option>
+                              {LAZ_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-sm font-bold text-amber-800 mb-2">Pilih Jenis</label>
+                            <select
+                              className="w-full px-4 py-3 border-2 border-amber-300 rounded-lg bg-white text-amber-800 font-medium focus:border-amber-500 focus:ring-2 focus:ring-amber-200"
+                              value={selectedJenis}
+                              onChange={e => setSelectedJenis(e.target.value)}
+                              disabled={zakatPaying}
+                            >
+                              <option value="">-- Pilih Jenis --</option>
+                              {JENIS_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-sm font-bold text-amber-800 mb-2">Pilih Metode Pembayaran</label>
+                            <select
+                              className="w-full px-4 py-3 border-2 border-amber-300 rounded-lg bg-white text-amber-800 font-medium focus:border-amber-500 focus:ring-2 focus:ring-amber-200"
+                              value={paymentMethod}
+                              onChange={e => setPaymentMethod(e.target.value)}
+                              disabled={zakatPaying}
+                            >
+                              <option value="">-- Pilih Metode Pembayaran --</option>
+                              {PAYMENT_METHODS.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
                             </select>
                           </div>
                           <Button
                             className="w-full text-lg font-bold py-4"
                             variant="primary"
                             size="lg"
-                            onClick={handleSimulateZakatPayment}
-                            disabled={!zakatPaymentMethod || zakatPaying}
+                            onClick={handleMarkZakatPaid}
+                            disabled={zakatPaying || !selectedLaz || !selectedJenis || !paymentMethod}
                           >
                             {zakatPaying ? "Memproses Pembayaran..." : "💰 Bayar Zakat Sekarang"}
                           </Button>
@@ -771,7 +870,7 @@ export default function KaryawanDashboard() {
                     )}
 
                     {zakatPaid && (
-                      <div className="bg-gradient-to-r from-green-100 to-green-200 rounded-xl p-6 border-2 border-green-300 shadow-lg animate-pulse">
+                      <div className="bg-gradient-to-r from-green-100 to-green-200 rounded-xl p-6 border-2 border-green-300 shadow-lg animate-pulse mt-4">
                         <div className="flex items-center justify-center gap-4">
                           <CheckCircle2 className="text-green-600 w-8 h-8" />
                           <div className="text-center">
@@ -873,7 +972,7 @@ export default function KaryawanDashboard() {
                     <div className="flex justify-between items-center text-sm p-3 bg-green-50 rounded-lg border border-green-200">
                       <span className="text-green-700 font-medium">Zakat Terbayar</span>
                       <span className="font-bold text-green-800">
-                        Rp {zakatPaid ? payroll?.zakat?.toLocaleString("id-ID") : "0" || "0"}
+                        Rp {zakatPaid ? payroll?.zakat?.toLocaleString("id-ID") : "0"}
                       </span>
                     </div>
                   </div>

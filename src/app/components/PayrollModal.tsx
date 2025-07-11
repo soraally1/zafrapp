@@ -1,13 +1,11 @@
 import { useState, useEffect, useMemo } from 'react';
 import { IoMdClose } from 'react-icons/io';
-import { PayrollData } from '../api/service/payrollService';
-import { createOrUpdateProfile } from '../api/service/userProfileService';
 
 interface PayrollModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave?: (data: Partial<PayrollData>) => Promise<void>;
-  payrollData?: Partial<PayrollData>;
+  onSave?: (data: any) => Promise<void>; // Accepts any data, parent handles API
+  payrollData?: Partial<any>;
   employeeData?: {
     id: string;
     name: string;
@@ -108,8 +106,8 @@ export default function PayrollModal({ isOpen, onClose, onSave, payrollData, emp
           setLoading(false);
           return;
         }
-        // Save to user profile
-        await createOrUpdateProfile(employeeData.id, formData);
+        // Save to user profile via parent onSave
+        await onSave?.(formData);
         onClose();
       } else {
         await onSave?.(formData);

@@ -27,8 +27,6 @@ import {
   calculateCashFlowData,
   calculateZisData,
 } from "./reports/financialReportLogic";
-import { getUserProfile } from "../../api/service/userProfileService";
-import { getAllPayrollUsersWithProfile } from "../../api/service/payrollService";
 import { format } from "date-fns";
 import { aggregatePayrollSummary, countProcessedSlips } from "./hrDashboardLogic";
 import { MdOutlineAttachMoney, MdOutlineCardGiftcard, MdOutlineRemoveCircleOutline, MdOutlineMosque, MdOutlineSavings } from 'react-icons/md';
@@ -64,38 +62,52 @@ export default function HRKeuanganDashboard() {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user && user.uid) {
         setLoadingUser(true);
-        // Fetch real user profile from Firestore
-        const profile = await getUserProfile(user.uid);
-        if (!profile || profile.role !== "hr-keuangan") {
-          // Not authorized, sign out and redirect
+        try {
+          const token = await user.getIdToken();
+          // Fetch user profile from API
+          const profileRes = await fetch('/api/profile', {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          if (!profileRes.ok) throw new Error('Unauthorized');
+          const profile = await profileRes.json();
+          if (!profile || profile.role !== "hr-keuangan") {
+            await signOut(auth);
+            router.push("/login");
+            return;
+          }
+          setUserData({ ...profile, uid: user.uid });
+          setLoadingUser(false);
+          setLoading(true);
+          // Fetch payroll users for current month (progress & summary)
+          const currentMonth = format(new Date(), 'yyyy-MM');
+          const payrollRes = await fetch(`/api/payroll-users?month=${currentMonth}`, {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          let payrollUsers: any[] = [];
+          if (payrollRes.ok) {
+            const payrollResult = await payrollRes.json();
+            payrollUsers = payrollResult.data || [];
+          }
+          // Use logic functions for summary and progress
+          const summary = aggregatePayrollSummary(payrollUsers);
+          const totalSlip = countProcessedSlips(payrollUsers);
+          setSummary({ ...summary, totalSlip });
+          // Fetch other dashboard data (these can remain as is if they use client SDK)
+          const [statsData, tasksData, upcomingData, reportsData] = await Promise.all([
+            fetchStats(),
+            fetchTasks(user.uid),
+            fetchUpcoming(user.uid),
+            fetchReports(user.uid)
+          ]);
+          setStats(formatStats(statsData));
+          setTasks(tasksData);
+          setUpcoming(upcomingData);
+          setTransactions(reportsData);
+          setLoading(false);
+        } catch (err) {
           await signOut(auth);
           router.push("/login");
-          return;
         }
-        setUserData({ ...profile, uid: user.uid }); // Ensure uid is always present
-        setLoadingUser(false);
-        setLoading(true);
-        // Fetch payroll users for current month (progress & summary)
-        const currentMonth = format(new Date(), 'yyyy-MM');
-        const payrollResult = await getAllPayrollUsersWithProfile(currentMonth);
-        let payrollUsers: any[] = [];
-        if (payrollResult.success) payrollUsers = payrollResult.data || [];
-        // Use logic functions for summary and progress
-        const summary = aggregatePayrollSummary(payrollUsers);
-        const totalSlip = countProcessedSlips(payrollUsers);
-        setSummary({ ...summary, totalSlip });
-        // Fetch other dashboard data
-        const [statsData, tasksData, upcomingData, reportsData] = await Promise.all([
-          fetchStats(),
-          fetchTasks(user.uid),
-          fetchUpcoming(user.uid),
-          fetchReports(user.uid)
-        ]);
-        setStats(formatStats(statsData));
-        setTasks(tasksData);
-        setUpcoming(upcomingData);
-        setTransactions(reportsData);
-        setLoading(false);
       } else {
         setLoadingUser(false);
       }

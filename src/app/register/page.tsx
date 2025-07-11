@@ -3,7 +3,8 @@ import Link from "next/link";
 import { useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { registerUser } from "@/app/api/service/firebaseUserService";
+import { getAuth, createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
+import { auth } from "@/lib/firebaseApi";
 import { LuMail, LuLock, LuStar, LuMoon, LuHeart, LuShield } from "react-icons/lu";
 import { Listbox } from "@headlessui/react";
 
@@ -57,31 +58,53 @@ export default function RegisterPage() {
     e.preventDefault();
     setLoading(true);
     setError("");
-    let userData: any = { name, email, password, role };
-    if (role === 'umkm-amil') {
-      userData = {
-        ...userData,
-        namaMitra,
-        alamatMitra,
-        detailBisnis,
-        jenisUsaha
-      };
-    }
-    const result = await registerUser(userData);
-    if (result.success) {
-      if (role === "hr-keuangan") {
-        router.push("/dashboard/hr-keuangan");
-      } else if (role === "karyawan") {
-        router.push("/dashboard/karyawan");
-      } else if (role === "umkm-amil") {
-        router.push("/dashboard/mitra");
-      } else {
-        router.push("/dashboard");
+    try {
+      // Register with Firebase Auth
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
+      if (!user) throw new Error("User not found after registration");
+      // Optionally update display name
+      await updateProfile(user, { displayName: name });
+      const token = await user.getIdToken();
+      // Prepare user data for API
+      let userData: any = { name, email, password, role };
+      if (role === 'umkm-amil') {
+        userData = {
+          ...userData,
+          namaMitra,
+          alamatMitra,
+          detailBisnis,
+          jenisUsaha
+        };
       }
-    } else {
-      setError(result.error);
+      // Call API to create user document and mitra data
+      const res = await fetch('/api/users', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify(userData)
+      });
+      const result = await res.json();
+      if (result.success) {
+        if (role === "hr-keuangan") {
+          router.push("/dashboard/hr-keuangan");
+        } else if (role === "karyawan") {
+          router.push("/dashboard/karyawan");
+        } else if (role === "umkm-amil") {
+          router.push("/dashboard/mitra");
+        } else {
+          router.push("/dashboard");
+        }
+      } else {
+        setError(result.error || 'Gagal mendaftar akun');
+      }
+    } catch (err: any) {
+      setError(err?.message || 'Gagal mendaftar akun');
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   return (

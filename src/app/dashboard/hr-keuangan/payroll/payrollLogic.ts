@@ -1,7 +1,5 @@
 import { useState, useEffect } from 'react';
 import { format } from 'date-fns';
-import { getAllPayrollUsersWithProfile, generateMonthlyPayroll, processPayrollPayment } from '@/app/api/service/payrollService';
-import { createOrUpdateProfile, getUserProfile } from '@/app/api/service/userProfileService';
 import { formatCurrency, getComplianceData, downloadCompliancePDF } from './payrollUIService';
 import { auth } from '@/lib/firebaseApi';
 import { onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
@@ -29,8 +27,17 @@ export function usePayrollPageLogic() {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
       if (currentUser) {
-        const profile = await getUserProfile(currentUser.uid);
-        setUserProfile(profile);
+        const token = await currentUser.getIdToken();
+        // Fetch user profile from API
+        const res = await fetch('/api/profile', {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (res.ok) {
+          const profile = await res.json();
+          setUserProfile(profile);
+        } else {
+          setUserProfile(null);
+        }
       } else {
         setUserProfile(null);
       }
@@ -41,8 +48,14 @@ export function usePayrollPageLogic() {
   const fetchPayrollUsers = async () => {
     try {
       setLoading(true);
-      const result = await getAllPayrollUsersWithProfile(selectedMonth);
-      if (result.success) {
+      const currentUser = auth.currentUser;
+      if (!currentUser) throw new Error('Not authenticated');
+      const token = await currentUser.getIdToken();
+      const res = await fetch(`/api/payroll-users?month=${selectedMonth}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const result = await res.json();
+      if (res.ok && result.success) {
         setPayrollUsers(result.data || []);
       } else {
         setError('Gagal mengambil data penggajian');
@@ -77,9 +90,19 @@ export function usePayrollPageLogic() {
         position: selectedEmployee?.profile?.role || selectedEmployee?.user?.role,
         month: selectedMonth,
       };
-      const { createOrUpdatePayroll } = await import('@/app/api/service/payrollService');
-      const result = await createOrUpdatePayroll(userId, payrollData);
-      if (result.success) {
+      const currentUser = auth.currentUser;
+      if (!currentUser) throw new Error('Not authenticated');
+      const token = await currentUser.getIdToken();
+      const res = await fetch(`/api/payroll-users?uid=${userId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify(payrollData)
+      });
+      const result = await res.json();
+      if (res.ok && result.success) {
         await fetchPayrollUsers();
       } else {
         throw new Error('Gagal menyimpan data penggajian');
@@ -93,8 +116,15 @@ export function usePayrollPageLogic() {
   const handleGenerateMonthlyPayroll = async () => {
     try {
       setLoading(true);
-      const result = await generateMonthlyPayroll(selectedMonth);
-      if (result.success) {
+      const currentUser = auth.currentUser;
+      if (!currentUser) throw new Error('Not authenticated');
+      const token = await currentUser.getIdToken();
+      const res = await fetch(`/api/payroll-users/generate?month=${selectedMonth}`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const result = await res.json();
+      if (res.ok && result.success) {
         await fetchPayrollUsers();
         showToast('success', 'Gaji bulanan berhasil diproses!');
       } else {
@@ -111,8 +141,15 @@ export function usePayrollPageLogic() {
 
   const handleProcessPayment = async (payrollId: string) => {
     try {
-      const result = await processPayrollPayment(payrollId);
-      if (result.success) {
+      const currentUser = auth.currentUser;
+      if (!currentUser) throw new Error('Not authenticated');
+      const token = await currentUser.getIdToken();
+      const res = await fetch(`/api/payroll-users/${payrollId}/pay`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const result = await res.json();
+      if (res.ok && result.success) {
         await fetchPayrollUsers();
         showToast('success', 'Pembayaran berhasil diproses!');
       } else {
@@ -127,8 +164,15 @@ export function usePayrollPageLogic() {
 
   const handleOpenDefaultPayroll = async (employee: any) => {
     setDefaultPayrollEmployee(employee);
-    // Fetch latest profile
-    const profile = await getUserProfile(employee.user.id);
+    // Fetch latest profile from API
+    const currentUser = auth.currentUser;
+    if (!currentUser) return;
+    const token = await currentUser.getIdToken();
+    const res = await fetch(`/api/profile?uid=${employee.user.id}`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    let profile = null;
+    if (res.ok) profile = await res.json();
     setDefaultPayrollData(profile ? {
       defaultBasicSalary: (profile as any).defaultBasicSalary || 0,
       defaultAllowances: (profile as any).defaultAllowances || { transport: 0, meals: 0, housing: 0, other: 0 },
@@ -139,7 +183,17 @@ export function usePayrollPageLogic() {
 
   const handleSaveDefaultPayroll = async (form: any) => {
     if (!defaultPayrollEmployee) return;
-    await createOrUpdateProfile(defaultPayrollEmployee.user.id, form);
+    const currentUser = auth.currentUser;
+    if (!currentUser) return;
+    const token = await currentUser.getIdToken();
+    await fetch(`/api/profile?uid=${defaultPayrollEmployee.user.id}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`
+      },
+      body: JSON.stringify(form)
+    });
     setIsDefaultModalOpen(false);
     await fetchPayrollUsers();
   };

@@ -2,7 +2,8 @@
 import Link from "next/link";
 import { useState } from "react";
 import Image from "next/image";
-import { loginUser } from "@/app/api/service/firebaseUserService";
+import { getAuth, signInWithEmailAndPassword } from "firebase/auth";
+import { auth } from "@/lib/firebaseApi";
 import { LuMail, LuLock, LuStar, LuMoon, LuHeart, LuShield } from "react-icons/lu";
 import { useRouter } from "next/navigation";
 
@@ -18,22 +19,28 @@ export default function LoginPage() {
     setLoading(true);
     setError("");
     try {
-      const result = await loginUser({ email, password });
-      if (result.success) {
-        if (result.role === "hr-keuangan") {
-          router.push("/dashboard/hr-keuangan");
-        } else if (result.role === "karyawan") {
-          router.push("/dashboard/karyawan");
-        } else if (result.role === "umkm-amil"){
-          router.push("/dashboard/mitra");
-        } else {
-          setError("Anda tidak memiliki akses ke halaman ini.");
-        }
+      // Use Firebase Auth to sign in
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
+      if (!user) throw new Error("User not found");
+      const token = await user.getIdToken();
+      // Fetch user profile from API
+      const res = await fetch("/api/profile", {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (!res.ok) throw new Error("Gagal memuat profil pengguna");
+      const profile = await res.json();
+      if (profile.role === "hr-keuangan") {
+        router.push("/dashboard/hr-keuangan");
+      } else if (profile.role === "karyawan") {
+        router.push("/dashboard/karyawan");
+      } else if (profile.role === "umkm-amil") {
+        router.push("/dashboard/mitra");
       } else {
-        setError(result.error);
+        setError("Anda tidak memiliki akses ke halaman ini.");
       }
-    } catch (err) {
-      setError("Email atau password salah, atau akun tidak ditemukan.");
+    } catch (err: any) {
+      setError(err?.message || "Email atau password salah, atau akun tidak ditemukan.");
     } finally {
       setLoading(false);
     }

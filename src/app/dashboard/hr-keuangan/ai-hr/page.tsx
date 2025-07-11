@@ -1,13 +1,10 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { format } from "date-fns";
 import Sidebar from "../../../components/Sidebar";
 import Topbar from "../../../components/Topbar";
 import { onAuthStateChanged, signOut } from "firebase/auth";
 import { auth } from "@/lib/firebaseApi"; // Import the initialized auth instance
-// @ts-ignore: import path may be valid in project
-// import { getUserProfile } from "../../../api/service/userProfileService"; // This is the problematic import
 import { useRouter } from "next/navigation";
 import ReactMarkdown from "react-markdown";
 

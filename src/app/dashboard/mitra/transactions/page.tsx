@@ -2,7 +2,6 @@
 import { useState, useEffect } from "react";
 import { auth } from "@/lib/firebaseApi";
 import { getAuth, onAuthStateChanged } from "firebase/auth";
-import { getUserProfile } from "@/app/api/service/userProfileService";
 import { useRouter } from "next/navigation";
 import { FiBookOpen, FiFeather, FiCheckCircle, FiFileText, FiPlus, FiStar, FiHeart } from "react-icons/fi";
 import Sidebar from "@/app/components/Sidebar";
@@ -49,17 +48,22 @@ export default function TransactionPage() {
       if (user && user.uid) {
         setUserUid(user.uid);
         try {
-          const profile = await getUserProfile(user.uid);
+          const token = await user.getIdToken();
+          // Fetch user profile from API
+          const res = await fetch('/api/profile', {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          let profile = null;
+          if (res.ok) profile = await res.json();
           setUserName(profile?.name || "");
           setUserRole(profile?.role || "");
           setUserPhoto(profile?.photo);
           // Fetch transactions from API
-          const idToken = await user.getIdToken();
-          const res = await fetch("/api/transactions", {
-            headers: { Authorization: `Bearer ${idToken}` },
+          const txRes = await fetch("/api/transactions", {
+            headers: { Authorization: `Bearer ${token}` },
           });
-          if (res.ok) {
-            const txs = await res.json();
+          if (txRes.ok) {
+            const txs = await txRes.json();
             setTransactions(txs);
           }
         } catch {
@@ -196,29 +200,29 @@ export default function TransactionPage() {
               <h2 className="text-xl font-bold mb-4 flex items-center gap-2 text-[#00C570]">
                 <FiFeather className="text-[#00C570]" /> Form Transaksi Syariah
               </h2>
-              {formError && <div className="mb-3 p-2 bg-red-100 text-red-700 rounded text-sm">{formError}</div>}
+            {formError && <div className="mb-3 p-2 bg-red-100 text-red-700 rounded text-sm">{formError}</div>}
               <form className="grid grid-cols-1 md:grid-cols-2 gap-6" onSubmit={handleSubmit}>
                 <div className="flex flex-col gap-4">
-                  <div>
+              <div>
                     <label className="block text-base font-semibold text-[#00C570] mb-2" htmlFor="tanggal-transaksi">Tanggal Transaksi</label>
                     <input id="tanggal-transaksi" type="date" className="w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-[#00C570]/40 focus:outline-none border-gray-200 focus:border-transparent transition shadow-sm" value={form.date} onChange={e => setForm(f => ({ ...f, date: e.target.value }))} required />
                     <span className="text-xs text-gray-400">Format: yyyy-mm-dd</span>
-                  </div>
-                  <div>
+              </div>
+              <div>
                     <label className="block text-base font-semibold text-[#00C570] mb-2" htmlFor="kategori-transaksi">Kategori Transaksi</label>
                     <select id="kategori-transaksi" className="w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-[#00C570]/40 focus:outline-none border-gray-200 focus:border-transparent transition shadow-sm" value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))}>
-                      {CATEGORY_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-                    </select>
-                  </div>
-                  <div>
+                  {CATEGORY_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                </select>
+              </div>
+              <div>
                     <label className="block text-base font-semibold text-[#00C570] mb-2" htmlFor="tipe-transaksi">Tipe Transaksi</label>
                     <select id="tipe-transaksi" className="w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-[#00C570]/40 focus:outline-none border-gray-200 focus:border-transparent transition shadow-sm" value={form.type} onChange={e => setForm(f => ({ ...f, type: e.target.value }))}>
                       {TYPE_OPTIONS.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
                     </select>
                   </div>
-                </div>
+              </div>
                 <div className="flex flex-col gap-4">
-                  <div>
+              <div>
                     <label className="block text-base font-semibold text-[#00C570] mb-2" htmlFor="nominal">Nominal</label>
                     <input id="nominal" type="number" placeholder="Contoh: 50000" className="w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-[#00C570]/40 focus:outline-none border-gray-200 focus:border-transparent transition shadow-sm placeholder:text-black" value={form.nominal} onChange={e => setForm(f => ({ ...f, nominal: e.target.value }))} required />
                     <span className="text-xs text-gray-400">Masukkan angka tanpa titik/koma</span>
@@ -227,15 +231,15 @@ export default function TransactionPage() {
                     <label className="block text-base font-semibold text-[#00C570] mb-2" htmlFor="deskripsi">Deskripsi</label>
                     <textarea id="deskripsi" placeholder="Contoh: Pembelian bahan baku untuk produksi" className="w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-[#00C570]/40 focus:outline-none border-gray-200 focus:border-transparent transition shadow-sm placeholder:text-black min-h-[80px]" value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} required rows={3}></textarea>
                     <span className="text-xs text-gray-400 mt-1">Jelaskan transaksi secara singkat dan jelas</span>
-                  </div>
+              </div>
                   <div className="flex justify-end mt-2">
                     <button type="submit" className="w-full md:w-auto px-8 py-3 bg-gradient-to-r from-[#00C570] to-[#00A86B] text-white rounded-xl flex items-center gap-2 font-semibold shadow-lg hover:from-[#00A86B] hover:to-[#00C570] transition text-base text-center justify-center" disabled={submitting}>
-                      <FiPlus />
-                      {submitting ? 'Menyimpan...' : 'Simpan Transaksi'}
-                    </button>
+                  <FiPlus />
+                  {submitting ? 'Menyimpan...' : 'Simpan Transaksi'}
+                </button>
                   </div>
-                </div>
-              </form>
+              </div>
+            </form>
               <div className="mt-4 text-xs text-gray-500 flex items-center gap-2">
                 <FiBookOpen className="text-[#00C570]" />
                 <span>"Jujurlah dalam bertransaksi, karena kejujuran membawa keberkahan." (HR. Bukhari)</span>
