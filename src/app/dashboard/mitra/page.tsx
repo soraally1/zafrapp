@@ -56,7 +56,7 @@ export default function MitraDashboard() {
   }, [router]);
 
   if (loading) {
-    return (
+  return (
       <div className="flex-1 flex flex-col items-center justify-center min-h-screen bg-gradient-to-br from-[#E6FFF4] via-[#F9F6F0] to-[#F6F8FA]">
         <img
           src="/zafra.svg"
@@ -149,7 +149,7 @@ export default function MitraDashboard() {
                   <div className="flex flex-col items-center">
                     <span className="text-3xl font-extrabold text-gray-900">{totalTransactions}</span>
                     <span className="text-sm text-gray-500 mt-1">Total Transaksi</span>
-                  </div>
+          </div>
                   <div className="flex flex-col items-center">
                     <span className="text-3xl font-extrabold text-green-600">{formatRupiahShort(totalIncome)}</span>
                     <span className="text-sm text-green-600 mt-1">Total Pemasukan</span>
@@ -157,12 +157,12 @@ export default function MitraDashboard() {
                   <div className="flex flex-col items-center">
                     <span className="text-3xl font-extrabold text-red-600">{formatRupiahShort(totalExpense)}</span>
                     <span className="text-sm text-red-600 mt-1">Total Pengeluaran</span>
-                  </div>
+                            </div>
                   <div className="flex flex-col items-center">
                     <span className="text-3xl font-extrabold text-[#00C570]">{formatRupiahShort(saldo)}</span>
                     <span className="text-sm text-[#00C570] mt-1">Saldo</span>
-                  </div>
-                </div>
+                      </div>
+                    </div>
                 <div className="grid grid-cols-3 gap-8 mb-6">
                   <div className="flex flex-col items-center">
                     <span className="text-2xl font-bold text-green-600">{halalCount}</span>
@@ -182,7 +182,7 @@ export default function MitraDashboard() {
                   <span>"Jujurlah dalam bertransaksi, karena kejujuran membawa keberkahan." (HR. Bukhari)</span>
                 </div>
               </div>
-            </div>
+                      </div>
                     </div>
 
           {/* Recent Transactions Table */}

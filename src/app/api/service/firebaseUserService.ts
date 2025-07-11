@@ -1,5 +1,6 @@
 import { registerWithEmail, loginWithEmail, saveUserToFirestore, saveMitraData } from "@/lib/firebaseApi";
 import { firestore as db } from "@/lib/firebaseAdmin";
+import { getAuth } from "firebase-admin/auth";
 
 interface User {
   id: string;
@@ -9,26 +10,53 @@ interface User {
   photo?: string;
 }
 
-export async function registerUser({ name, email, password, role, namaMitra, alamatMitra, detailBisnis, jenisUsaha }: { name: string; email: string; password: string; role: string; namaMitra?: string; alamatMitra?: string; detailBisnis?: string; jenisUsaha?: string; }) {
+export async function registerUser({ name, email, password, role, createdAt, namaMitra, alamatMitra, detailBisnis, jenisUsaha }: { name: string; email: string; password: string; role: string; createdAt: string; namaMitra?: string; alamatMitra?: string; detailBisnis?: string; jenisUsaha?: string; }) {
   try {
-    const userCredential = await registerWithEmail(email, password);
-    const user = userCredential.user;
-    if (!user?.uid) throw new Error("User UID not found after registration.");
-
-    // Save core user data
-    await saveUserToFirestore({ uid: user.uid, email, name, role });
-
-    // If the user is a Mitra, save their specific data to the 'mitra' collection
-    if (role === 'umkm-amil' && namaMitra && alamatMitra && detailBisnis && jenisUsaha) {
-      await saveMitraData({
-        uid: user.uid,
-        namaMitra,
-        alamatMitra,
-        detailBisnis,
-        jenisUsaha,
-      });
+    // Check if Auth user already exists
+    let userRecord;
+    try {
+      userRecord = await getAuth().getUserByEmail(email);
+    } catch (e: any) {
+      if (e.code === 'auth/user-not-found') {
+        userRecord = null;
+      } else {
+        throw e;
+      }
     }
-    return { success: true, uid: user.uid };
+    let uid = userRecord?.uid;
+    if (!uid) {
+      // Register new Auth user
+      const userCredential = await registerWithEmail(email, password);
+      const user = userCredential.user;
+      if (!user?.uid) throw new Error("User UID not found after registration.");
+      uid = user.uid;
+    }
+    // Check if Firestore user exists
+    const userDoc = await db.collection("users").doc(uid).get();
+    if (!userDoc.exists) {
+      // Save core user data using Admin SDK
+      await db.collection("users").doc(uid).set({
+        name,
+        email,
+        role,
+        createdAt
+      });
+      // If the user is a Mitra, save their specific data to the 'mitra' collection using Admin SDK
+      if (role === 'umkm-amil' && namaMitra && alamatMitra && detailBisnis && jenisUsaha) {
+        await db.collection("mitra").doc(uid).set({
+          userId: uid,
+          namaMitra,
+          alamatMitra,
+          detailBisnis,
+          jenisUsaha,
+          createdAt
+        });
+      }
+      return { success: true, uid };
+    } else {
+      // Firestore user already exists
+      return { success: false, error: "User already exists in Firestore." };
+    }
   } catch (err: any) {
     return { success: false, error: err?.message || "Register failed" };
   }
@@ -112,14 +140,13 @@ export async function updateUserRole(uid: string, newRole: string) {
   }
 }
 
-export async function createUser({ name, email, password, role }: { name: string, email: string, password: string, role: string }) {
+export async function createUser({ name, email, password, role, createdAt, namaMitra, alamatMitra, detailBisnis, jenisUsaha }: { name: string, email: string, password: string, role: string, createdAt: string, namaMitra?: string, alamatMitra?: string, detailBisnis?: string, jenisUsaha?: string }) {
   try {
-    // First register the user with Firebase Auth
-    const registerResult = await registerUser({ name, email, password, role });
+    // First try to register or sync user
+    const registerResult = await registerUser({ name, email, password, role, createdAt, namaMitra, alamatMitra, detailBisnis, jenisUsaha });
     if (!registerResult.success) {
       throw new Error(registerResult.error || "Failed to register user");
     }
-    
     return { success: true, uid: registerResult.uid };
   } catch (err: any) {
     return { success: false, error: err?.message || "Failed to create user" };

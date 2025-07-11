@@ -31,9 +31,9 @@ export default function LoginPage() {
       if (!res.ok) throw new Error("Gagal memuat profil pengguna");
       const profile = await res.json();
       if (profile.role === "hr-keuangan") {
-        router.push("/dashboard/hr-keuangan");
+          router.push("/dashboard/hr-keuangan");
       } else if (profile.role === "karyawan") {
-        router.push("/dashboard/karyawan");
+          router.push("/dashboard/karyawan");
       } else if (profile.role === "umkm-amil") {
         router.push("/dashboard/mitra");
       } else {

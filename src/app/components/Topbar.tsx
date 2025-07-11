@@ -108,18 +108,6 @@ export default function Topbar({ userName, userRole, userPhoto, loading = false 
               </span>
             </div>
           )}
-          <div className="absolute -top-1 -right-1">
-            <div className="bg-[#E6FFF4] rounded-full p-1 border border-[#00C570]/20 shadow">
-              <Image 
-                src="/zafra.svg" 
-                alt="ZAFRA" 
-                width={14} 
-                height={14}
-                className="sm:w-4 sm:h-4"
-                priority
-              />
-            </div>
-          </div>
         </button>
         {/* Dropdown Menu */}
         {dropdownOpen && (

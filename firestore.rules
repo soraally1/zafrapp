@@ -9,7 +9,7 @@ service cloud.firestore {
 
     // Users collection
     match /users/{userId} {
-      // A user can create their own user document with valid data.
+
       allow create: if request.auth.uid == userId
                     && request.resource.data.keys().hasAll(['name', 'email', 'role', 'createdAt'])
                     && request.resource.data.keys().size() == 4
@@ -18,6 +18,7 @@ service cloud.firestore {
                     && request.resource.data.role is string
                     && request.resource.data.createdAt is string
                     && request.resource.data.role in ['hr-keuangan', 'karyawan', 'umkm-amil'];
+
 
       // A user can read their own data; HR can read any user's data.
       allow get: if request.auth.uid == userId 

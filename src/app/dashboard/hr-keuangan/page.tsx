@@ -70,40 +70,40 @@ export default function HRKeuanganDashboard() {
           });
           if (!profileRes.ok) throw new Error('Unauthorized');
           const profile = await profileRes.json();
-          if (!profile || profile.role !== "hr-keuangan") {
-            await signOut(auth);
-            router.push("/login");
-            return;
-          }
+        if (!profile || profile.role !== "hr-keuangan") {
+          await signOut(auth);
+          router.push("/login");
+          return;
+        }
           setUserData({ ...profile, uid: user.uid });
-          setLoadingUser(false);
-          setLoading(true);
-          // Fetch payroll users for current month (progress & summary)
-          const currentMonth = format(new Date(), 'yyyy-MM');
+        setLoadingUser(false);
+        setLoading(true);
+        // Fetch payroll users for current month (progress & summary)
+        const currentMonth = format(new Date(), 'yyyy-MM');
           const payrollRes = await fetch(`/api/payroll-users?month=${currentMonth}`, {
             headers: { Authorization: `Bearer ${token}` }
           });
-          let payrollUsers: any[] = [];
+        let payrollUsers: any[] = [];
           if (payrollRes.ok) {
             const payrollResult = await payrollRes.json();
             payrollUsers = payrollResult.data || [];
           }
-          // Use logic functions for summary and progress
-          const summary = aggregatePayrollSummary(payrollUsers);
-          const totalSlip = countProcessedSlips(payrollUsers);
-          setSummary({ ...summary, totalSlip });
+        // Use logic functions for summary and progress
+        const summary = aggregatePayrollSummary(payrollUsers);
+        const totalSlip = countProcessedSlips(payrollUsers);
+        setSummary({ ...summary, totalSlip });
           // Fetch other dashboard data (these can remain as is if they use client SDK)
-          const [statsData, tasksData, upcomingData, reportsData] = await Promise.all([
-            fetchStats(),
-            fetchTasks(user.uid),
-            fetchUpcoming(user.uid),
-            fetchReports(user.uid)
-          ]);
-          setStats(formatStats(statsData));
-          setTasks(tasksData);
-          setUpcoming(upcomingData);
-          setTransactions(reportsData);
-          setLoading(false);
+        const [statsData, tasksData, upcomingData, reportsData] = await Promise.all([
+          fetchStats(),
+          fetchTasks(user.uid),
+          fetchUpcoming(user.uid),
+          fetchReports(user.uid)
+        ]);
+        setStats(formatStats(statsData));
+        setTasks(tasksData);
+        setUpcoming(upcomingData);
+        setTransactions(reportsData);
+        setLoading(false);
         } catch (err) {
           await signOut(auth);
           router.push("/login");

@@ -30,25 +30,24 @@ export async function loginWithEmail(email: string, password: string) {
   return signInWithEmailAndPassword(auth, email, password);
 }
 
-export async function saveUserToFirestore({ uid, email, name, role }: { uid: string; email: string; name: string; role: string; }) {
-  const userData = {
-    email,
+export async function saveUserToFirestore({ uid, email, name, role, createdAt }: { uid: string; email: string; name: string; role: string; createdAt: string }) {
+  const userDoc = {
     name,
+    email,
     role,
-    createdAt: new Date().toISOString(),
+    createdAt
   };
-  return setDoc(doc(db, "users", uid), userData);
+  await db.collection('users').doc(uid).set(userDoc);
 }
 
-export async function saveMitraData({ uid, namaMitra, alamatMitra, detailBisnis, jenisUsaha }: { uid: string; namaMitra: string; alamatMitra: string; detailBisnis: string; jenisUsaha: string; }) {
-  const mitraData = {
-    userId: uid, // Link back to the user
+export async function saveMitraData({ uid, namaMitra, alamatMitra, detailBisnis, jenisUsaha, createdAt }: { uid: string; namaMitra: string; alamatMitra: string; detailBisnis: string; jenisUsaha: string; createdAt: string }) {
+  const mitraDoc = {
+    userId: uid,
     namaMitra,
     alamatMitra,
     detailBisnis,
     jenisUsaha,
-    createdAt: new Date().toISOString(),
+    createdAt
   };
-  // Use the user's UID as the document ID in the 'mitra' collection for easy linking
-  return setDoc(doc(db, "mitra", uid), mitraData);
+  await db.collection('mitra').doc(uid).set(mitraDoc);
 } 

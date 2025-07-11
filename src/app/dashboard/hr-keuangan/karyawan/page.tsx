@@ -69,20 +69,20 @@ export default function EmployeeManagement() {
           });
           if (!res.ok) throw new Error('Unauthorized');
           const profile = await res.json();
-          if (!profile || profile.role !== 'hr-keuangan') {
-            await signOut(auth);
-            router.push('/login');
-            return;
-          }
+        if (!profile || profile.role !== 'hr-keuangan') {
+          await signOut(auth);
+          router.push('/login');
+          return;
+        }
           setUserData({ ...profile, uid: user.uid });
         } catch {
           await signOut(auth);
           router.push('/login');
         } finally {
-          setLoadingUser(false);
+        setLoadingUser(false);
         }
       } else {
-        setLoadingUser(false);
+      setLoadingUser(false);
       }
     });
     return () => unsubscribe();

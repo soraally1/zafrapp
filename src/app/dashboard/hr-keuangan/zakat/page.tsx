@@ -80,7 +80,7 @@ export default function ZakatPage() {
           });
           if (!res.ok) throw new Error('Unauthorized');
           const profile = await res.json();
-          if (!profile || profile.role !== 'hr-keuangan') {
+        if (!profile || profile.role !== 'hr-keuangan') {
             await signOut(auth);
             router.push('/login');
             return;
@@ -277,7 +277,7 @@ export default function ZakatPage() {
         const data = await res.json();
         setTransactions(data.data || []);
       }
-      setModalTx(null);
+    setModalTx(null);
     } catch {
     }
   };

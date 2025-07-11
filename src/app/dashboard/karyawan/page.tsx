@@ -366,6 +366,14 @@ export default function KaryawanDashboard() {
   const [paymentMethod, setPaymentMethod] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
   const [zakatPaying, setZakatPaying] = useState(false);
+  const [events, setEvents] = useState<any[]>([]);
+  const [showEventModal, setShowEventModal] = useState(false);
+  const [newEvent, setNewEvent] = useState({ date: '', title: '', type: 'meeting' });
+  const [eventLoading, setEventLoading] = useState(false);
+  const [eventSuccess, setEventSuccess] = useState('');
+  // 1. Add state for editing and deleting events
+  const [editingEvent, setEditingEvent] = useState<any | null>(null);
+  const [deletingEvent, setDeletingEvent] = useState<any | null>(null);
 
   useEffect(() => {
     const auth = getAuth();
@@ -411,7 +419,6 @@ export default function KaryawanDashboard() {
         setPayroll(data);
       }
     } catch {
-      // Handle error
     } finally {
       setPayrollLoading(false);
     }
@@ -426,13 +433,11 @@ export default function KaryawanDashboard() {
       const user = getAuth().currentUser;
       if (!user) return;
       const token = await user.getIdToken();
-      // Mark zakat as paid in zakatPayments
       await fetch(`/api/payroll/mark-zakat-paid`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
         body: JSON.stringify({ userId: user.uid, month: new Date().toISOString().slice(0, 7) })
       });
-      // Log zakat payment for HR with LAZ, Jenis, and payment method
       const res = await fetch('/api/zakat-payments', {
         method: 'POST',
         headers: {
@@ -450,7 +455,6 @@ export default function KaryawanDashboard() {
       });
       if (res.status === 409) {
         setSuccessMessage("Anda sudah menunaikan zakat untuk periode ini.");
-        // Refetch zakatPayment to update UI
         const now = new Date();
         const month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
         const userId = user.uid;
@@ -463,7 +467,6 @@ export default function KaryawanDashboard() {
       setSelectedJenis("");
       setPaymentMethod("");
       setSuccessMessage("Pembayaran zakat berhasil! Terima kasih telah menunaikan zakat.");
-      // Refetch payroll and zakatPayment to update status
       const now = new Date();
       const month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
       const userId = user.uid;
@@ -486,11 +489,131 @@ export default function KaryawanDashboard() {
       const res = await fetch(`/api/zakat-payments?userId=${userId}&month=${month}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
+      if (res.status === 403) {
+        setSuccessMessage("Akses ditolak. Silakan login ulang.");
+        return;
+      }
       if (res.ok) {
         const data = await res.json();
         setZakatPayment(data.data?.[0] || null);
       }
+    } catch (err) {
+      setSuccessMessage("Gagal mengambil status zakat. Silakan coba lagi.");
+    }
+  };
+
+  // Fetch events for the current user and month
+  const fetchEvents = async (month: string, year: string) => {
+    try {
+      const user = getAuth().currentUser;
+      if (!user) return;
+      const token = await user.getIdToken();
+      const res = await fetch(`/api/events?month=${month}&year=${year}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setEvents(data.data || []);
+      }
     } catch {}
+  };
+
+  // On calendar month change or mount, fetch events
+  useEffect(() => {
+    const now = selectedDate || new Date();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const year = String(now.getFullYear());
+    fetchEvents(month, year);
+  }, [selectedDate]);
+
+  // Add event handler
+  const handleAddEvent = async () => {
+    if (!newEvent.date || !newEvent.title || !newEvent.type) return;
+    if (eventLoading) return; // Prevent double submit
+    setEventLoading(true);
+    try {
+      const user = getAuth().currentUser;
+      if (!user) return;
+      const token = await user.getIdToken();
+      const res = await fetch('/api/events', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify(newEvent)
+      });
+      if (res.ok) {
+        setEventSuccess('Event berhasil ditambahkan!');
+        setShowEventModal(false);
+        setNewEvent({ date: '', title: '', type: 'meeting' });
+        // Set calendar to the month of the new event
+        setSelectedDate(new Date(newEvent.date));
+        // Always refetch events from backend after add
+        const now = selectedDate || new Date();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const year = String(now.getFullYear());
+        await fetchEvents(month, year);
+        setTimeout(() => setEventSuccess(''), 3000);
+      }
+    } finally {
+      setEventLoading(false);
+    }
+  };
+
+  // 2. Add handler for editing event
+  const handleEditEvent = async () => {
+    if (!editingEvent) return;
+    setEventLoading(true);
+    try {
+      const user = getAuth().currentUser;
+      if (!user) return;
+      const token = await user.getIdToken();
+      const res = await fetch(`/api/events`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify(editingEvent)
+      });
+      if (res.ok) {
+        setEventSuccess('Event berhasil diupdate!');
+        setShowEventModal(false);
+        setEditingEvent(null);
+        setNewEvent({ date: '', title: '', type: 'meeting' });
+        // Refetch events
+        const now = selectedDate || new Date();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const year = String(now.getFullYear());
+        fetchEvents(month, year);
+        setTimeout(() => setEventSuccess(''), 3000);
+      }
+    } finally {
+      setEventLoading(false);
+    }
+  };
+
+  // 3. Add handler for deleting event
+  const handleDeleteEvent = async (event: any) => {
+    if (!event) return;
+    setEventLoading(true);
+    try {
+      const user = getAuth().currentUser;
+      if (!user) return;
+      const token = await user.getIdToken();
+      const res = await fetch(`/api/events`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ id: event.id })
+      });
+      if (res.ok) {
+        setEventSuccess('Event berhasil dihapus!');
+        setDeletingEvent(null);
+        // Refetch events
+        const now = selectedDate || new Date();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const year = String(now.getFullYear());
+        fetchEvents(month, year);
+        setTimeout(() => setEventSuccess(''), 3000);
+      }
+    } finally {
+      setEventLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -513,12 +636,6 @@ export default function KaryawanDashboard() {
   if (loadingUser || (!userRole && !payrollLoading)) {
     return null
   }
-
-  const events = [
-    { date: "2024-01-15", title: "Meeting Tim", type: "meeting" },
-    { date: "2024-01-20", title: "Training", type: "training" },
-    { date: "2024-01-25", title: "Gajian", type: "salary" },
-  ]
 
   const GOLD_PRICE_PER_GRAM = 1350000
   const NISAB_GRAM = 85
@@ -573,7 +690,7 @@ export default function KaryawanDashboard() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-emerald-900 mb-1">
-                  Rp {((payroll?.netSalary || 0) * (new Date().getMonth() + 1)).toLocaleString("id-ID")}
+                  Rp {payroll?.basicSalary?.toLocaleString("id-ID") || "0"}
                 </div>
                 <p className="text-xs text-emerald-600 flex items-center gap-1">
                   <TrendingUp className="w-3 h-3" />
@@ -591,7 +708,7 @@ export default function KaryawanDashboard() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-emerald-900 mb-1">
-                  Rp {((Number(payroll?.netSalary) || 0) * (new Date().getMonth() + 1)).toLocaleString("id-ID") || "0"}
+                  Rp {((Number(payroll?.basicSalary) || 0) * (new Date().getMonth() + 1)).toLocaleString("id-ID") || "0"}
                 </div>
                 <p className="text-xs text-emerald-600">{new Date().getMonth() + 1} bulan kerja</p>
               </CardContent>
@@ -606,7 +723,7 @@ export default function KaryawanDashboard() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-emerald-900 mb-1">
-                  Rp {payroll?.allowances?.other?.toLocaleString("id-ID") || "0"}
+                  Rp {payroll?.totalAllowances?.toLocaleString("id-ID") || "0"}
                 </div>
                 <p className="text-xs text-emerald-600">Bonus kinerja Q4</p>
               </CardContent>
@@ -671,15 +788,27 @@ export default function KaryawanDashboard() {
                         <div className="flex justify-between items-center text-sm bg-white rounded-lg p-3 shadow-sm">
                           <span className="text-emerald-700 font-medium">Tunjangan Transport</span>
                           <span className="font-bold text-emerald-800">
-                            Rp {payroll?.allowances?.transportAllowance?.toLocaleString("id-ID") || "0"}
+                            Rp {payroll?.allowances?.transport?.toLocaleString("id-ID") || "0"}
+                          </span>
+                        </div>
+                        <div className="flex justify-between items-center text-sm bg-white rounded-lg p-3 shadow-sm">
+                          <span className="text-emerald-700 font-medium">Tunjangan Makan</span>
+                          <span className="font-bold text-emerald-800">
+                            Rp {payroll?.allowances?.meals?.toLocaleString("id-ID") || "0"}
+                          </span>
+                        </div>
+                        <div className="flex justify-between items-center text-sm bg-white rounded-lg p-3 shadow-sm">
+                          <span className="text-emerald-700 font-medium">Tunjangan Lainnya</span>
+                          <span className="font-bold text-emerald-800">
+                            Rp {payroll?.allowances?.other?.toLocaleString("id-ID") || "0"}
                           </span>
                         </div>
                       </div>
                       <div className="border-t border-emerald-200 pt-4 mt-4">
                         <div className="flex justify-between items-center bg-emerald-600 text-white rounded-lg p-3">
-                          <span className="font-bold">Total Pendapatan</span>
+                          <span className="font-bold">Total Tunjangan</span>
                           <span className="font-bold text-lg">
-                            Rp {payroll?.totalEarnings?.toLocaleString("id-ID") || "0"}
+                            Rp {payroll?.totalAllowances?.toLocaleString("id-ID") || "0"}
                           </span>
                         </div>
                       </div>
@@ -692,21 +821,35 @@ export default function KaryawanDashboard() {
                       </h4>
                       <div className="space-y-3">
                         <div className="flex justify-between items-center text-sm bg-white rounded-lg p-3 shadow-sm">
-                          <span className="text-red-700 font-medium">BPJS Kesehatan</span>
+                          <span className="text-red-700 font-medium">BPJS</span>
                           <span className="text-red-600 font-bold">
-                            -Rp {payroll?.deductions?.healthInsurance?.toLocaleString("id-ID") || "0"}
+                            -Rp {payroll?.deductions?.bpjs?.toLocaleString("id-ID") || "0"}
                           </span>
                         </div>
                         <div className="flex justify-between items-center text-sm bg-white rounded-lg p-3 shadow-sm">
-                          <span className="text-red-700 font-medium">BPJS Ketenagakerjaan</span>
+                          <span className="text-red-700 font-medium">Pajak</span>
                           <span className="text-red-600 font-bold">
-                            -Rp {payroll?.deductions?.employmentInsurance?.toLocaleString("id-ID") || "0"}
+                            -Rp {payroll?.deductions?.tax?.toLocaleString("id-ID") || "0"}
                           </span>
                         </div>
                         <div className="flex justify-between items-center text-sm bg-white rounded-lg p-3 shadow-sm">
-                          <span className="text-red-700 font-medium">PPh 21</span>
+                          <span className="text-red-700 font-medium">Pinjaman</span>
                           <span className="text-red-600 font-bold">
-                            -Rp {payroll?.deductions?.incomeTax?.toLocaleString("id-ID") || "0"}
+                            -Rp {payroll?.deductions?.loans?.toLocaleString("id-ID") || "0"}
+                          </span>
+                        </div>
+                        <div className="flex justify-between items-center text-sm bg-white rounded-lg p-3 shadow-sm">
+                          <span className="text-red-700 font-medium">Potongan Lainnya</span>
+                          <span className="text-red-600 font-bold">
+                            -Rp {payroll?.deductions?.other?.toLocaleString("id-ID") || "0"}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="border-t border-red-200 pt-4 mt-4">
+                        <div className="flex justify-between items-center bg-red-600 text-white rounded-lg p-3">
+                          <span className="font-bold">Total Potongan</span>
+                          <span className="font-bold text-lg">
+                            -Rp {payroll?.totalDeductions?.toLocaleString("id-ID") || "0"}
                           </span>
                         </div>
                       </div>
@@ -893,7 +1036,7 @@ export default function KaryawanDashboard() {
               <Card className="shadow-xl hover:shadow-2xl transition-all duration-300">
                 <CardHeader>
                   <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-purple-600 rounded-lg flex items-center justify-center">
+                    <div className="w-8 h-8 bg-gradient-to-r from-emerald-500 to-emerald-600 rounded-lg flex items-center justify-center">
                       <CalendarIcon className="w-4 h-4 text-white" />
                     </div>
                     <div>
@@ -919,9 +1062,22 @@ export default function KaryawanDashboard() {
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
+                  <Button
+                    className="w-full mb-4"
+                    variant="primary"
+                    size="md"
+                    onClick={() => {
+                      setShowEventModal(true);
+                      setEditingEvent(null);
+                      setNewEvent({ date: selectedDate?.toISOString().slice(0, 10) || '', title: '', type: 'meeting' });
+                    }}
+                    disabled={eventLoading} // Prevent double open
+                  >
+                    + Tambah Event
+                  </Button>
                   {events.map((event) => (
                     <div
-                      key={event.date + "-" + event.title}
+                      key={event.id} // Use unique Firestore doc id
                       className="flex items-start space-x-4 p-4 rounded-xl bg-gradient-to-r from-emerald-50 to-emerald-100 hover:from-emerald-100 hover:to-emerald-200 transition-all duration-200 border border-emerald-200 shadow-sm"
                     >
                       <div
@@ -941,6 +1097,30 @@ export default function KaryawanDashboard() {
                       <Badge variant="outline" className="text-xs capitalize font-semibold">
                         {event.type}
                       </Badge>
+                      <div className="flex flex-col gap-1 ml-2">
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          className="p-1"
+                          onClick={() => {
+                            setEditingEvent(event);
+                            setShowEventModal(true);
+                            setNewEvent({ ...event });
+                          }}
+                          title="Edit Event"
+                        >
+                          ✏️
+                        </Button>
+                        <Button
+                          variant="destructive"
+                          size="icon"
+                          className="p-1"
+                          onClick={() => setDeletingEvent(event)}
+                          title="Hapus Event"
+                        >
+                          🗑️
+                        </Button>
+                      </div>
                     </div>
                   ))}
                 </CardContent>
@@ -949,7 +1129,7 @@ export default function KaryawanDashboard() {
               <Card className="shadow-xl hover:shadow-2xl transition-all duration-300">
                 <CardHeader>
                   <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 bg-gradient-to-r from-green-500 to-green-600 rounded-lg flex items-center justify-center">
+                    <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg flex items-center justify-center">
                       <PieChart className="w-4 h-4 text-white" />
                     </div>
                     <CardTitle>Ringkasan Keuangan</CardTitle>
@@ -960,19 +1140,19 @@ export default function KaryawanDashboard() {
                     <div className="flex justify-between items-center text-sm p-3 bg-emerald-50 rounded-lg border border-emerald-200">
                       <span className="text-emerald-700 font-medium">Gaji Rata-rata</span>
                       <span className="font-bold text-emerald-800">
-                        Rp {payroll?.netSalary?.toLocaleString("id-ID") || "0"}
+                        Rp {payroll?.basicSalary?.toLocaleString('id-ID') || '0'}
                       </span>
                     </div>
                     <div className="flex justify-between items-center text-sm p-3 bg-amber-50 rounded-lg border border-amber-200">
                       <span className="text-amber-700 font-medium">Total Bonus 2024</span>
                       <span className="font-bold text-amber-800">
-                        Rp {payroll?.allowances?.other?.toLocaleString("id-ID") || "0"}
+                        Rp {payroll?.totalAllowances?.toLocaleString('id-ID') || '0'}
                       </span>
                     </div>
                     <div className="flex justify-between items-center text-sm p-3 bg-green-50 rounded-lg border border-green-200">
                       <span className="text-green-700 font-medium">Zakat Terbayar</span>
                       <span className="font-bold text-green-800">
-                        Rp {zakatPaid ? payroll?.zakat?.toLocaleString("id-ID") : "0"}
+                        Rp {zakatPaid ? payroll?.zakat?.toLocaleString('id-ID') : '0'}
                       </span>
                     </div>
                   </div>
@@ -981,7 +1161,9 @@ export default function KaryawanDashboard() {
                       <div className="flex justify-between items-center">
                         <span className="text-sm font-bold text-emerald-800">Proyeksi Tahun Ini</span>
                         <span className="text-xl font-bold text-emerald-700">
-                          Rp {((payroll?.netSalary || 0) * 12).toLocaleString("id-ID")}
+                          Rp {(
+                            ((Number(payroll?.basicSalary) || 0) + (Number(payroll?.totalAllowances) || 0) - (Number(payroll?.zakat) || 0)) * 12
+                          ).toLocaleString('id-ID')}
                         </span>
                       </div>
                     </div>
@@ -1006,6 +1188,81 @@ export default function KaryawanDashboard() {
           </div>
         </main>
       </div>
+      {/* Modals for Add/Edit and Delete Event */}
+      {showEventModal && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-md mx-4 relative animate-fadeIn">
+            <button
+              onClick={() => { setShowEventModal(false); setEditingEvent(null); }}
+              className="absolute right-4 top-4 text-gray-400 hover:text-gray-600"
+            >
+              ✖️
+            </button>
+            <h2 className="text-xl font-bold mb-4">{editingEvent ? 'Edit Event' : 'Tambah Event'}</h2>
+            <form
+              onSubmit={e => {
+                e.preventDefault();
+                editingEvent ? handleEditEvent() : handleAddEvent();
+              }}
+              className="space-y-4"
+            >
+              <div>
+                <label className="block text-sm font-medium text-emerald-800 mb-1">Tanggal</label>
+                <input
+                  type="date"
+                  className="w-full px-3 py-2 border border-emerald-200 rounded-lg focus:ring-2 focus:ring-emerald-400"
+                  value={newEvent.date}
+                  onChange={e => setNewEvent(ev => ({ ...ev, date: e.target.value }))}
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-emerald-800 mb-1">Judul Event</label>
+                <input
+                  type="text"
+                  className="w-full px-3 py-2 border border-emerald-200 rounded-lg focus:ring-2 focus:ring-emerald-400"
+                  value={newEvent.title}
+                  onChange={e => setNewEvent(ev => ({ ...ev, title: e.target.value }))}
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-emerald-800 mb-1">Tipe Event</label>
+                <select
+                  className="w-full px-3 py-2 border border-emerald-200 rounded-lg focus:ring-2 focus:ring-emerald-400"
+                  value={newEvent.type}
+                  onChange={e => setNewEvent(ev => ({ ...ev, type: e.target.value }))}
+                  required
+                >
+                  <option value="meeting">Meeting</option>
+                  <option value="training">Training</option>
+                  <option value="other">Lainnya</option>
+                </select>
+              </div>
+              <div className="flex justify-end gap-2">
+                <Button type="button" variant="outline" onClick={() => { setShowEventModal(false); setEditingEvent(null); }}>Batal</Button>
+                <Button type="submit" variant="primary" disabled={eventLoading}>
+                  {eventLoading ? 'Menyimpan...' : (editingEvent ? 'Simpan Perubahan' : 'Tambah Event')}
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+      {deletingEvent && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-xs mx-4 relative animate-fadeIn">
+            <h2 className="text-lg font-bold mb-4 text-red-700">Hapus Event</h2>
+            <p className="mb-4">Yakin ingin menghapus event <span className="font-semibold">{deletingEvent.title}</span>?</p>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setDeletingEvent(null)}>Batal</Button>
+              <Button variant="destructive" onClick={() => handleDeleteEvent(deletingEvent)} disabled={eventLoading}>
+                {eventLoading ? 'Menghapus...' : 'Hapus'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

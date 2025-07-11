@@ -3,7 +3,7 @@ import Link from "next/link";
 import { useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { getAuth, createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
+import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
 import { auth } from "@/lib/firebaseApi";
 import { LuMail, LuLock, LuStar, LuMoon, LuHeart, LuShield } from "react-icons/lu";
 import { Listbox } from "@headlessui/react";
@@ -65,9 +65,8 @@ export default function RegisterPage() {
       if (!user) throw new Error("User not found after registration");
       // Optionally update display name
       await updateProfile(user, { displayName: name });
-      const token = await user.getIdToken();
       // Prepare user data for API
-      let userData: any = { name, email, password, role };
+      let userData: any = { name, email, password, role, createdAt: new Date().toISOString() };
       if (role === 'umkm-amil') {
         userData = {
           ...userData,
@@ -81,8 +80,7 @@ export default function RegisterPage() {
       const res = await fetch('/api/users', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify(userData)
       });
@@ -223,54 +221,54 @@ export default function RegisterPage() {
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                       <LuStar size={20} className="text-gray-400" />
                     </div>
-                    <input
-                      type="text"
+              <input
+                type="text"
                       placeholder="Masukkan nama lengkap Anda"
-                      value={name}
-                      onChange={e => setName(e.target.value)}
+                value={name}
+                onChange={e => setName(e.target.value)}
                       className="w-full pl-10 pr-4 py-3 bg-white/10 backdrop-blur-md border border-white/20 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:border-transparent transition-all duration-300"
-                      required
-                      disabled={loading}
-                    />
+                required
+                disabled={loading}
+              />
                   </div>
                 </div>
                 <div>
                   <label className="block text-gray-200 font-medium mb-2 text-sm">
                     Alamat Email
-                  </label>
-                  <div className="relative">
+            </label>
+              <div className="relative">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                       <LuMail size={20} className="text-gray-400" />
                     </div>
-                    <input
-                      type="email"
+                <input
+                  type="email"
                       placeholder="Masukkan email Anda"
-                      value={email}
-                      onChange={e => setEmail(e.target.value)}
+                  value={email}
+                  onChange={e => setEmail(e.target.value)}
                       className="w-full pl-10 pr-4 py-3 bg-white/10 backdrop-blur-md border border-white/20 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:border-transparent transition-all duration-300"
-                      required
-                      disabled={loading}
-                    />
-                  </div>
+                  required
+                  disabled={loading}
+                />
+              </div>
                 </div>
                 <div>
                   <label className="block text-gray-200 font-medium mb-2 text-sm">
                     Password
-                  </label>
-                  <div className="relative">
+            </label>
+              <div className="relative">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                       <LuLock size={20} className="text-gray-400" />
                     </div>
-                    <input
-                      type="password"
+                <input
+                  type="password"
                       placeholder="Masukkan password Anda"
-                      value={password}
-                      onChange={e => setPassword(e.target.value)}
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
                       className="w-full pl-10 pr-4 py-3 bg-white/10 backdrop-blur-md border border-white/20 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:border-transparent transition-all duration-300"
-                      required
-                      disabled={loading}
-                    />
-                  </div>
+                  required
+                  disabled={loading}
+                />
+              </div>
                 </div>
                 <div>
                   <label className="block text-gray-200 font-medium mb-2 text-sm">Role</label>
@@ -284,9 +282,10 @@ export default function RegisterPage() {
                               <LuShield size={18} className="text-gray-400" />
                             </span>
                           </Listbox.Button>
-                          <Listbox.Options className="absolute mt-1 w-full bg-white/90 rounded-xl shadow-xl border border-emerald-100 py-1 z-50 text-emerald-800">
+                          <Listbox.Options as="div" className="absolute mt-1 w-full bg-white/90 rounded-xl shadow-xl border border-emerald-100 py-1 z-50 text-emerald-800">
                             {roles.map((r) => (
                               <Listbox.Option
+                                as="div"
                                 key={r.value}
                                 value={r.value}
                                 className={({ active }) =>
@@ -295,15 +294,15 @@ export default function RegisterPage() {
                               >
                                 {r.label}
                               </Listbox.Option>
-                            ))}
+                ))}
                           </Listbox.Options>
                         </>
                       )}
                     </Listbox>
                   </div>
                 </div>
-                {role === 'umkm-amil' && (
-                  <>
+            {role === 'umkm-amil' && (
+              <>
                     <div>
                       <label className="block text-gray-200 font-medium mb-2 text-sm">
                         Nama Mitra
@@ -312,34 +311,34 @@ export default function RegisterPage() {
                         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                           <LuStar size={18} className="text-gray-400" />
                         </div>
-                        <input
-                          type="text"
-                          placeholder="Nama Lengkap Mitra atau Badan Usaha"
-                          value={namaMitra}
-                          onChange={(e) => setNamaMitra(e.target.value)}
+                  <input
+                    type="text"
+                    placeholder="Nama Lengkap Mitra atau Badan Usaha"
+                    value={namaMitra}
+                    onChange={(e) => setNamaMitra(e.target.value)}
                           className="w-full pl-10 pr-4 py-3 bg-white/10 backdrop-blur-md border border-white/20 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:border-transparent transition-all duration-300"
-                          required
-                          disabled={loading}
-                        />
+                    required
+                    disabled={loading}
+                  />
                       </div>
                     </div>
                     <div>
                       <label className="block text-gray-200 font-medium mb-2 text-sm">
                         Alamat Mitra
-                      </label>
+                </label>
                       <div className="relative">
                         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                           <LuMail size={18} className="text-gray-400" />
                         </div>
-                        <input
-                          type="text"
-                          placeholder="Alamat Lengkap Mitra"
-                          value={alamatMitra}
-                          onChange={(e) => setAlamatMitra(e.target.value)}
+                  <input
+                    type="text"
+                    placeholder="Alamat Lengkap Mitra"
+                    value={alamatMitra}
+                    onChange={(e) => setAlamatMitra(e.target.value)}
                           className="w-full pl-10 pr-4 py-3 bg-white/10 backdrop-blur-md border border-white/20 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:border-transparent transition-all duration-300"
-                          required
-                          disabled={loading}
-                        />
+                    required
+                    disabled={loading}
+                  />
                       </div>
                     </div>
                     <div>
@@ -354,9 +353,10 @@ export default function RegisterPage() {
                                   <LuStar size={16} className="text-gray-400" />
                                 </span>
                               </Listbox.Button>
-                              <Listbox.Options className="absolute mt-1 w-full bg-white/90 rounded-xl shadow-xl border border-emerald-100 py-1 z-50 text-emerald-800 max-h-60 overflow-auto">
-                                {jenisUsahaOptions.map((option) => (
+                              <Listbox.Options as="div" className="absolute mt-1 w-full bg-white/90 rounded-xl shadow-xl border border-emerald-100 py-1 z-50 text-emerald-800 max-h-60 overflow-auto">
+                    {jenisUsahaOptions.map((option) => (
                                   <Listbox.Option
+                                    as="div"
                                     key={option.value}
                                     value={option.value}
                                     disabled={option.disabled}
@@ -366,7 +366,7 @@ export default function RegisterPage() {
                                   >
                                     {option.label}
                                   </Listbox.Option>
-                                ))}
+                    ))}
                               </Listbox.Options>
                             </>
                           )}
@@ -376,21 +376,21 @@ export default function RegisterPage() {
                     <div>
                       <label className="block text-gray-200 font-medium mb-2 text-sm">
                         Detail Bisnis
-                      </label>
+                </label>
                       <div className="relative">
-                        <textarea
-                          placeholder="Jelaskan secara singkat tentang bisnis Anda"
-                          value={detailBisnis}
-                          onChange={(e) => setDetailBisnis(e.target.value)}
+                  <textarea
+                    placeholder="Jelaskan secara singkat tentang bisnis Anda"
+                    value={detailBisnis}
+                    onChange={(e) => setDetailBisnis(e.target.value)}
                           className="w-full pl-4 pr-4 py-3 bg-white/10 backdrop-blur-md border border-white/20 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:border-transparent transition-all duration-300"
-                          rows={3}
-                          required
-                          disabled={loading}
-                        />
+                    rows={3}
+                    required
+                    disabled={loading}
+                  />
                       </div>
                     </div>
-                  </>
-                )}
+              </>
+            )}
                 {error && (
                   <div className="bg-red-500/20 border border-red-500/50 rounded-lg p-3">
                     <p className="text-red-300 text-sm font-medium">{error}</p>
@@ -412,19 +412,19 @@ export default function RegisterPage() {
                       Daftar dengan Berkah
                     </div>
                   )}
-                </button>
+            </button>
                 <div className="flex items-center justify-between text-sm">
                   <Link href="/login" className="text-emerald-400 hover:text-emerald-300 transition-colors">
                     Sudah punya akun? Login
                   </Link>
                 </div>
-              </form>
+          </form>
               {/* Bottom Islamic Quote */}
               <div className="mt-8 text-center">
                 <p className="text-gray-400 text-xs italic leading-relaxed">
                   "Barangsiapa yang memudahkan urusan orang lain, maka Allah akan memudahkan urusannya di dunia dan akhirat."
-                </p>
-              </div>
+          </p>
+        </div>
             </div>
           </div>
         </div>
