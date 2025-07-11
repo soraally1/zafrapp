@@ -1,5 +1,4 @@
-import { db } from "@/lib/firebaseApi";
-import { doc, getDoc, setDoc, updateDoc, collection, getDocs } from "firebase/firestore";
+import { firestore as db } from "@/lib/firebaseAdmin";
 
 interface UserProfile {
   id?: string;
@@ -14,10 +13,10 @@ interface UserProfile {
 
 export async function getUserProfile(uid: string) {
   try {
-    const userRef = doc(db, "users", uid);
-    const userSnap = await getDoc(userRef);
+    const userRef = db.collection("users").doc(uid);
+    const userSnap = await userRef.get();
     
-    if (userSnap.exists()) {
+    if (userSnap.exists) {
       return { id: userSnap.id, ...userSnap.data() } as UserProfile;
     }
     return null;
@@ -29,21 +28,21 @@ export async function getUserProfile(uid: string) {
 
 export async function createOrUpdateProfile(uid: string, profileData: Partial<UserProfile>) {
   try {
-    const userRef = doc(db, "users", uid);
-    const userSnap = await getDoc(userRef);
+    const userRef = db.collection("users").doc(uid);
+    const userSnap = await userRef.get();
     
     const now = new Date().toISOString();
     
-    if (!userSnap.exists()) {
+    if (!userSnap.exists) {
       // Create new profile
-      await setDoc(userRef, {
+      await userRef.set({
         ...profileData,
         createdAt: now,
         updatedAt: now
       });
     } else {
       // Update existing profile
-      await updateDoc(userRef, {
+      await userRef.update({
         ...profileData,
         updatedAt: now
       });
@@ -58,19 +57,19 @@ export async function createOrUpdateProfile(uid: string, profileData: Partial<Us
 
 export async function updateUserProfilePhoto(uid: string, photoUrl: string) {
   try {
-    const userRef = doc(db, "users", uid);
-    const userSnap = await getDoc(userRef);
+    const userRef = db.collection("users").doc(uid);
+    const userSnap = await userRef.get();
     
-    if (!userSnap.exists()) {
+    if (!userSnap.exists) {
       // Create the document if it doesn't exist
-      await setDoc(userRef, {
+      await userRef.set({
         photo: photoUrl,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
       });
     } else {
       // Update existing document
-      await updateDoc(userRef, {
+      await userRef.update({
         photo: photoUrl,
         updatedAt: new Date().toISOString()
       });
@@ -85,19 +84,19 @@ export async function updateUserProfilePhoto(uid: string, photoUrl: string) {
 
 export async function updateUserHeaderPhoto(uid: string, headerPhotoUrl: string) {
   try {
-    const userRef = doc(db, "users", uid);
-    const userSnap = await getDoc(userRef);
+    const userRef = db.collection("users").doc(uid);
+    const userSnap = await userRef.get();
     
-    if (!userSnap.exists()) {
+    if (!userSnap.exists) {
       // Create the document if it doesn't exist
-      await setDoc(userRef, {
+      await userRef.set({
         headerPhoto: headerPhotoUrl,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
       });
     } else {
       // Update existing document
-      await updateDoc(userRef, {
+      await userRef.update({
         headerPhoto: headerPhotoUrl,
         updatedAt: new Date().toISOString()
       });
@@ -111,13 +110,22 @@ export async function updateUserHeaderPhoto(uid: string, headerPhotoUrl: string)
 }
 
 // New: Fetch all user profiles
-export async function getAllUserProfiles() {
+export async function getAllUserProfiles(summary = false) {
   try {
-    const usersRef = collection(db, "users");
-    const querySnapshot = await getDocs(usersRef);
+    const usersRef = db.collection("users");
+    const querySnapshot = await usersRef.get();
     const profiles: UserProfile[] = [];
     querySnapshot.forEach((doc) => {
-      profiles.push({ id: doc.id, ...doc.data() } as UserProfile);
+      if (summary) {
+        const data = doc.data();
+        profiles.push({ 
+          id: doc.id, 
+          name: data.name,
+          role: data.role
+        } as UserProfile);
+      } else {
+        profiles.push({ id: doc.id, ...doc.data() } as UserProfile);
+      }
     });
     return profiles;
   } catch (error) {

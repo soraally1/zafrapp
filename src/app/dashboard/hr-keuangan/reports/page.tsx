@@ -27,9 +27,10 @@ import {
   type Transaction 
 } from "./financialReportLogic";
 import { exportToPDF, exportToExcel, exportToCSV } from "./exportUtils";
-import { getAuth, onAuthStateChanged, signOut } from "firebase/auth";
+import { onAuthStateChanged, signOut } from "firebase/auth";
+import { auth } from "@/lib/firebaseApi"; // Import the initialized auth instance
 import { useRouter } from "next/navigation";
-import { getUserProfile } from '@/app/api/service/userProfileService';
+// import { getUserProfile } from '@/app/api/service/userProfileService'; // This is now fetched via API
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
@@ -166,21 +167,46 @@ export default function ReportPage() {
   }, []);
 
   useEffect(() => {
-    const auth = getAuth();
+    // const auth = getAuth(); // No longer need to call this
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      if (user && user.uid) {
-        const profile = await getUserProfile(user.uid);
-        setUserProfile(profile);
-        if (!profile || profile.role !== 'hr-keuangan') {
+      if (user) {
+        try {
+          const token = await user.getIdToken();
+          const response = await fetch('/api/profile', {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+            },
+          });
+
+          if (!response.ok) {
+            throw new Error('Failed to fetch profile');
+          }
+
+          const profile = await response.json();
+          setUserProfile(profile);
+
+          if (!profile || profile.role !== 'hr-keuangan') {
+            await signOut(auth);
+            router.push('/login');
+            return;
+          }
+        } catch (error) {
+          console.error("Authentication error, signing out: ", error);
           await signOut(auth);
           router.push('/login');
           return;
+        } finally {
+          setLoadingUser(false);
         }
+      } else {
+        // No user is signed in.
+        setLoadingUser(false);
+        router.push('/login');
       }
-      setLoadingUser(false);
     });
+
     return () => unsubscribe();
-  }, []);
+  }, [router]);
 
   const summary = useMemo(() => calculateSummary(filteredTx), [filteredTx]);
   const chartData = useMemo(() => calculateChartData(filteredTx), [filteredTx]);

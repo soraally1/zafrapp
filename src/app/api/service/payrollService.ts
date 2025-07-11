@@ -1,5 +1,4 @@
-import { db } from "@/lib/firebaseApi";
-import { doc, getDoc, setDoc, updateDoc, collection, query, where, getDocs, Timestamp } from "firebase/firestore";
+import { firestore as db } from "@/lib/firebaseAdmin";
 import { getAllUsers } from "./firebaseUserService";
 import { getUserProfile } from "./userProfileService";
 
@@ -59,8 +58,8 @@ const calculateTotalDeductions = (deductions: PayrollData['deductions']) => {
 export async function createOrUpdatePayroll(userId: string, payrollData: Partial<PayrollData>) {
   try {
     const now = new Date().toISOString();
-    const payrollRef = doc(db, "payrolls", `${userId}_${payrollData.month}`);
-    const payrollSnap = await getDoc(payrollRef);
+    const payrollRef = db.collection("payrolls").doc(`${userId}_${payrollData.month}`);
+    const payrollSnap = await payrollRef.get();
 
     // Calculate totals
     const totalAllowances = calculateTotalAllowances(payrollData.allowances || { transport: 0, meals: 0, housing: 0, other: 0 });
@@ -70,10 +69,10 @@ export async function createOrUpdatePayroll(userId: string, payrollData: Partial
     const netSalary = totalIncome - totalDeductions - zakat;
 
     let zakatPaid = payrollData.zakatPaid;
-    if (payrollSnap.exists()) {
+    if (payrollSnap.exists) {
       // Preserve zakatPaid if already set, unless explicitly set in update
       const existing = payrollSnap.data();
-      if (typeof zakatPaid !== 'boolean') {
+      if (existing && typeof zakatPaid !== 'boolean') {
         zakatPaid = typeof existing.zakatPaid === 'boolean' ? existing.zakatPaid : false;
       }
     } else {
@@ -91,16 +90,16 @@ export async function createOrUpdatePayroll(userId: string, payrollData: Partial
       updatedAt: now,
     };
 
-    if (!payrollSnap.exists()) {
+    if (!payrollSnap.exists) {
       // Create new payroll record
-      await setDoc(payrollRef, {
+      await payrollRef.set({
         ...updatedPayrollData,
         status: "Draft",
         createdAt: now,
       });
     } else {
       // Update existing payroll record
-      await updateDoc(payrollRef, updatedPayrollData);
+      await payrollRef.update(updatedPayrollData);
     }
 
     return { success: true, data: { id: payrollRef.id, ...updatedPayrollData } };
@@ -113,10 +112,10 @@ export async function createOrUpdatePayroll(userId: string, payrollData: Partial
 // Get user payroll by month
 export async function getUserPayroll(userId: string, month: string) {
   try {
-    const payrollRef = doc(db, "payrolls", `${userId}_${month}`);
-    const payrollSnap = await getDoc(payrollRef);
+    const payrollRef = db.collection("payrolls").doc(`${userId}_${month}`);
+    const payrollSnap = await payrollRef.get();
     
-    if (payrollSnap.exists()) {
+    if (payrollSnap.exists) {
       return { success: true, data: { id: payrollSnap.id, ...payrollSnap.data() } as PayrollData };
     }
     return { success: true, data: null };
@@ -129,9 +128,9 @@ export async function getUserPayroll(userId: string, month: string) {
 // Get all payrolls for a specific month
 export async function getMonthlyPayrolls(month: string) {
   try {
-    const payrollsRef = collection(db, "payrolls");
-    const q = query(payrollsRef, where("month", "==", month));
-    const querySnapshot = await getDocs(q);
+    const payrollsRef = db.collection("payrolls");
+    const q = payrollsRef.where("month", "==", month);
+    const querySnapshot = await q.get();
     
     const payrolls: PayrollData[] = [];
     querySnapshot.forEach((doc) => {
@@ -149,9 +148,9 @@ export async function getMonthlyPayrolls(month: string) {
 export async function generateMonthlyPayroll(month: string) {
   try {
     const users = await getAllUsers();
-    const payrollsRef = collection(db, "payrolls");
-    const q = query(payrollsRef, where("month", "==", month));
-    const querySnapshot = await getDocs(q);
+    const payrollsRef = db.collection("payrolls");
+    const q = payrollsRef.where("month", "==", month);
+    const querySnapshot = await q.get();
     const existingPayrollIds = new Set(querySnapshot.docs.map(doc => doc.id));
 
     // For each user, if payroll does not exist, create it from default profile data
@@ -167,7 +166,7 @@ export async function generateMonthlyPayroll(month: string) {
           const totalIncome = (profile as any).defaultBasicSalary + totalAllowances;
           const zakat = calculateZakat(totalIncome);
           const netSalary = totalIncome - totalDeductions - zakat;
-          await setDoc(doc(db, "payrolls", payrollId), {
+          await db.collection("payrolls").doc(payrollId).set({
             userId: user.id,
             employeeName: profile.name || user.name,
             position: profile.role || user.role,
@@ -191,7 +190,7 @@ export async function generateMonthlyPayroll(month: string) {
 
     // Update status to "Pending" for all payrolls for the month
     const updatePromises = querySnapshot.docs.map(docSnap =>
-      updateDoc(doc(db, "payrolls", docSnap.id), {
+      db.collection("payrolls").doc(docSnap.id).update({
         status: "Pending",
         updatedAt: new Date().toISOString()
       })
@@ -210,8 +209,8 @@ export async function generateMonthlyPayroll(month: string) {
 // Process payment for a specific payroll
 export async function processPayrollPayment(payrollId: string) {
   try {
-    const payrollRef = doc(db, "payrolls", payrollId);
-    await updateDoc(payrollRef, {
+    const payrollRef = db.collection("payrolls").doc(payrollId);
+    await payrollRef.update({
       status: "Paid",
       paymentDate: new Date().toISOString(),
       updatedAt: new Date().toISOString()
@@ -247,30 +246,39 @@ export async function getAllPayrollUsersWithProfile(month: string) {
     console.error("Error fetching payroll users with profile:", error);
     return { success: false, error };
   }
-} 
+}
 
-export async function getAllPayrolls() {
+// Get all payrolls, with an optional limit
+export async function getAllPayrolls(limit?: number) {
   try {
-    const payrollsRef = collection(db, "payrolls");
-    const querySnapshot = await getDocs(payrollsRef);
+    let query: FirebaseFirestore.Query<FirebaseFirestore.DocumentData> = db.collection("payrolls").orderBy("createdAt", "desc");
+
+    if (limit) {
+      query = query.limit(limit);
+    }
+
+    const querySnapshot = await query.get();
+    
     const payrolls: PayrollData[] = [];
     querySnapshot.forEach((doc) => {
       payrolls.push({ id: doc.id, ...doc.data() } as PayrollData);
     });
+    
     return { success: true, data: payrolls };
   } catch (error) {
     console.error("Error fetching all payrolls:", error);
-    return { success: false, error };
+    return { success: false, data: [], error };
   }
-} 
+}
 
 // Mark zakat as paid for a payroll
 export async function markZakatPaid(payrollId: string): Promise<boolean> {
   try {
-    await updateDoc(doc(db, "payrolls", payrollId), { zakatPaid: true });
+    const payrollRef = db.collection("payrolls").doc(payrollId);
+    await payrollRef.update({ zakatPaid: true });
     return true;
-  } catch (e) {
-    console.error("Failed to mark zakat as paid:", e);
+  } catch (error) {
+    console.error("Error marking zakat as paid:", error);
     return false;
   }
 } 
