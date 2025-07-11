@@ -5,9 +5,9 @@ import React from "react";
 import { LiaHomeSolid, LiaWalletSolid, LiaDonateSolid, LiaChartBarSolid, LiaUserSolid, LiaRobotSolid } from "react-icons/lia";
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
-import { getAuth, signOut, onAuthStateChanged } from "firebase/auth";
+import { signOut, onAuthStateChanged } from "firebase/auth";
+import { auth } from "@/lib/firebaseApi"; // Import the initialized auth instance
 import { useEffect, useState } from "react";
-import { getUserProfile } from "../api/service/userProfileService";
 
 const menu = [
   { label: "Dashboard HR", icon: <LiaHomeSolid size={24} />, path: "/dashboard/hr-keuangan" },
@@ -41,13 +41,17 @@ const Sidebar: React.FC<SidebarProps> = ({ active = "Dashboard" }) => {
   const [loadingUser, setLoadingUser] = useState(true);
 
   useEffect(() => {
-    const auth = getAuth();
+    // const auth = getAuth(); // No longer need to call this
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      if (user && user.uid) {
+      if (user) {
         try {
-          const profile = await getUserProfile(user.uid);
-          if (profile?.role && isUserRole(profile.role)) {
-            setUserRole(profile.role);
+          const token = await user.getIdToken();
+          const response = await fetch('/api/profile', {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          if (response.ok) {
+            const profile = await response.json();
+            setUserRole(profile?.role || null);
           } else {
             setUserRole(null);
           }
@@ -64,7 +68,7 @@ const Sidebar: React.FC<SidebarProps> = ({ active = "Dashboard" }) => {
 
   const handleLogout = async () => {
     try {
-      const auth = getAuth();
+      // const auth = getAuth(); // No longer need to call this
       await signOut(auth);
       router.push("/login");
     } catch (error) {
