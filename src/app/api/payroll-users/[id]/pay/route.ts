@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { processPayrollPayment } from '../../../service/payrollService';
 import { admin } from '@/lib/firebaseAdmin';
 
-export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
+export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const authHeader = req.headers.get('authorization');
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -16,7 +16,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     if (!userDoc.exists || userDoc.data()?.role !== 'hr-keuangan') {
       return NextResponse.json({ message: 'Forbidden: Not authorized' }, { status: 403 });
     }
-    const { id } = params;
+    const { id } = await params;
     const result = await processPayrollPayment(id);
     return NextResponse.json(result);
   } catch (error: any) {
