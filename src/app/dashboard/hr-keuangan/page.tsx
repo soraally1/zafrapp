@@ -218,7 +218,12 @@ export default function HRKeuanganDashboard() {
                   <span className="text-xs text-white/80">Target: 20 slip</span>
                 </div>
               </div>
-              <button className="mt-2 bg-white/90 hover:bg-[#00C570] hover:text-white text-[#00C570] font-semibold px-4 py-2 rounded-lg w-max focus:outline-none focus:ring-2 focus:ring-[#00C570] shadow transition-all flex items-center gap-2 text-sm md:text-base">Lihat Detail <FiChevronRight /></button>
+              <button 
+                onClick={() => router.push('/dashboard/hr-keuangan/payroll')}
+                className="mt-2 bg-white/90 hover:bg-[#00C570] hover:text-white text-[#00C570] font-semibold px-4 py-2 rounded-lg w-max focus:outline-none focus:ring-2 focus:ring-[#00C570] shadow transition-all flex items-center gap-2 text-sm md:text-base"
+              >
+                Lihat Detail <FiChevronRight />
+              </button>
               {/* In the Progress Penggajian card, summary stats row: */}
               <div className="w-full min-w-0 flex flex-col sm:flex-row gap-2 sm:gap-4 mt-2 sm:mt-4 overflow-x-auto pb-2 scrollbar scrollbar-thumb-[#00C570]/40 scrollbar-track-gray-100 relative">
                 <div className="w-full min-w-0 flex flex-row flex-nowrap gap-x-2 sm:gap-x-4">

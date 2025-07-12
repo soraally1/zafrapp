@@ -319,11 +319,6 @@ export default function ZakatPage() {
     ],
   } : { labels: [], datasets: [] };
 
-  // UI Elements
-  const handleExport = () => {
-    // Placeholder for export functionality
-    alert("Export functionality not yet implemented.");
-  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-green-50 to-teal-50 flex">
@@ -355,14 +350,6 @@ export default function ZakatPage() {
                 Distribusi Dana Sosial & Zakat
               </h1>
               <p className="text-gray-600">Kelola zakat profesi, infaq, sedekah, dan distribusi dana sosial secara otomatis dan transparan sesuai prinsip syariah.</p>
-            </div>
-            <div className="flex gap-2">
-              <button onClick={handleExport} className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-xl shadow hover:bg-emerald-700 transition font-semibold">
-                <FiDownload /> Export Excel
-              </button>
-              <button className="flex items-center gap-2 px-4 py-2 bg-teal-600 text-white rounded-xl shadow hover:bg-teal-700 transition font-semibold">
-                <FiDownload /> Export PDF
-              </button>
             </div>
           </div>
 
@@ -447,31 +434,74 @@ export default function ZakatPage() {
           <hr className="my-8 border-t-2 border-dashed border-gray-200" />
 
           {/* Filter/Search Controls */}
-          <div className="bg-white rounded-xl shadow-sm p-4 mb-8 flex flex-wrap gap-3 items-center border border-emerald-100">
-            <div className="flex items-center gap-2">
-              <FiSearch className="text-emerald-500" />
-              <input type="text" placeholder="Cari transaksi, penerima, jenis..." className="px-3 py-2 border border-emerald-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent" value={search} onChange={e => setSearch(e.target.value)} />
-            </div>
-            <div className="flex items-center gap-2">
-              <FiFilter className="text-emerald-500" />
-              <select className="px-3 py-2 border border-emerald-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent" value={typeFilter} onChange={e => setTypeFilter(e.target.value)}>
-                <option value="">Semua Jenis</option>
-                {TYPE_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-              </select>
-              <select className="px-3 py-2 border border-emerald-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent" value={lazFilter} onChange={e => setLazFilter(e.target.value)}>
-                <option value="">Semua LAZ</option>
-                {lazOptionsFromData.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-              </select>
-              <select className="px-3 py-2 border border-emerald-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent" value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
-                <option value="">Semua Status</option>
-                {STATUS_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-              </select>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-gray-500 text-xs">Dari</span>
-              <input type="date" className="px-3 py-2 border border-emerald-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent" value={dateFrom} onChange={e => setDateFrom(e.target.value)} />
-              <span className="text-gray-500 text-xs">s/d</span>
-              <input type="date" className="px-3 py-2 border border-emerald-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent" value={dateTo} onChange={e => setDateTo(e.target.value)} />
+          <div className="bg-white rounded-xl shadow-sm p-4 mb-8 border border-emerald-100">
+            <div className="flex flex-col lg:flex-row gap-4">
+              {/* Search Bar */}
+              <div className="flex-1">
+                <div className="flex items-center gap-2">
+                  <FiSearch className="text-emerald-500 flex-shrink-0" />
+                  <input 
+                    type="text" 
+                    placeholder="Cari transaksi, penerima, jenis..." 
+                    className="w-full px-3 py-2 border border-emerald-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-sm" 
+                    value={search} 
+                    onChange={e => setSearch(e.target.value)} 
+                  />
+                </div>
+              </div>
+              
+              {/* Filter Dropdowns */}
+              <div className="flex flex-col sm:flex-row gap-3">
+                <div className="flex items-center gap-2">
+                  <FiFilter className="text-emerald-500 flex-shrink-0" />
+                  <select 
+                    className="flex-1 min-w-0 px-3 py-2 border border-emerald-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-sm" 
+                    value={typeFilter} 
+                    onChange={e => setTypeFilter(e.target.value)}
+                  >
+                    <option value="">Semua Jenis</option>
+                    {TYPE_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                  </select>
+                </div>
+                <select 
+                  className="flex-1 min-w-0 px-3 py-2 border border-emerald-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-sm" 
+                  value={lazFilter} 
+                  onChange={e => setLazFilter(e.target.value)}
+                >
+                  <option value="">Semua LAZ</option>
+                  {lazOptionsFromData.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                </select>
+                <select 
+                  className="flex-1 min-w-0 px-3 py-2 border border-emerald-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-sm" 
+                  value={statusFilter} 
+                  onChange={e => setStatusFilter(e.target.value)}
+                >
+                  <option value="">Semua Status</option>
+                  {STATUS_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                </select>
+              </div>
+              
+              {/* Date Range */}
+              <div className="flex flex-col sm:flex-row gap-3">
+                <div className="flex items-center gap-2">
+                  <span className="text-gray-500 text-xs whitespace-nowrap">Dari</span>
+                  <input 
+                    type="date" 
+                    className="flex-1 min-w-0 px-3 py-2 border border-emerald-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-sm" 
+                    value={dateFrom} 
+                    onChange={e => setDateFrom(e.target.value)} 
+                  />
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-gray-500 text-xs whitespace-nowrap">s/d</span>
+                  <input 
+                    type="date" 
+                    className="flex-1 min-w-0 px-3 py-2 border border-emerald-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-sm" 
+                    value={dateTo} 
+                    onChange={e => setDateTo(e.target.value)} 
+                  />
+                </div>
+              </div>
             </div>
           </div>
 
@@ -798,7 +828,7 @@ export default function ZakatPage() {
             )}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {csrActivities.map((act) => (
-                <div key={act.id} className="bg-white rounded-xl shadow-md p-5 flex flex-col gap-3 hover:shadow-lg transition-shadow border border-emerald-100 relative overflow-hidden">
+                <div key={act.id} className="bg-white rounded-xl shadow-md p-5 flex flex-col gap-3 hover:shadow-lg transition-shadow border border-emerald-100 relative overflow-hidden mb-15">
                   <div className="absolute top-2 right-2 text-emerald-200 text-lg">🤲</div>
                   <div className="flex items-center gap-3 mb-2">
                     <span className="inline-block px-3 py-1 rounded-full bg-emerald-100 text-emerald-700 text-xs font-semibold border border-emerald-200">{act.date}</span>

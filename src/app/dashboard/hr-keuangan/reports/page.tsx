@@ -368,7 +368,7 @@ export default function ReportPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#F6F8FA] flex">
+    <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-green-50 to-teal-50 flex">
       <Sidebar active="Report" />
       <main className="flex-1 flex flex-col min-h-screen overflow-x-auto">
         <Topbar
@@ -378,39 +378,56 @@ export default function ReportPage() {
           loading={loadingUser}
         />
         <div className="p-4 md:p-8 max-w-7xl mx-auto w-full">
+          {/* Islamic Quote Banner */}
+          <div className="mb-6 bg-gradient-to-r from-emerald-600 to-teal-600 rounded-2xl p-6 text-white shadow-lg">
+            <div className="flex items-center gap-3 mb-3">
+              <FiFileText className="text-yellow-300 text-xl" />
+              <h2 className="text-lg font-semibold">Bismillahirrahmanirrahim</h2>
+            </div>
+            <div className="mb-2 text-right font-arabic text-2xl leading-relaxed">
+              وَمَا أَنْفَقْتُمْ مِنْ نَفَقَةٍ أَوْ نَذَرْتُمْ مِنْ نَذْرٍ فَإِنَّ اللَّهَ يَعْلَمُهُ
+            </div>
+            <div className="text-sm opacity-90 mb-1">
+              Dan apa saja yang kamu nafkahkan atau apa saja yang kamu nazarkan, maka sesungguhnya Allah mengetahuinya
+            </div>
+            <div className="text-xs opacity-75 font-medium">
+              QS. Al-Baqarah: 270
+            </div>
+          </div>
+
           <div className="mb-8 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div>
-              <h1 className="text-2xl md:text-3xl font-bold text-gray-800 mb-2">Laporan Keuangan & ZIS</h1>
-              <p className="text-gray-600">Sistem pencatatan otomatis, validasi AI Syariah, dan ekspor laporan keuangan.</p>
+              <h1 className="text-2xl md:text-3xl font-bold text-gray-800 mb-2 flex items-center gap-3">
+                <span className="text-emerald-600">📊</span>
+                Laporan Keuangan & ZIS
+              </h1>
+              <p className="text-gray-600">Sistem pencatatan otomatis, validasi AI Syariah, dan ekspor laporan keuangan sesuai prinsip syariah.</p>
             </div>
             <div className="flex gap-2 flex-wrap">
               <button 
                 onClick={handleExportPDF}
                 disabled={exportingPDF}
-                className="flex items-center gap-2 px-4 py-2 bg-[#00C570] text-white rounded-xl shadow hover:bg-green-700 transition font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-xl shadow hover:bg-emerald-700 transition font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <FiDownload /> {exportingPDF ? 'Mengekspor...' : 'Export PDF'}
               </button>
               <button 
                 onClick={handleExportExcel}
                 disabled={exportingExcel}
-                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-xl shadow hover:bg-blue-700 transition font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex items-center gap-2 px-4 py-2 bg-teal-600 text-white rounded-xl shadow hover:bg-teal-700 transition font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <FiDownload /> {exportingExcel ? 'Mengekspor...' : 'Export Excel'}
               </button>
               <button 
                 onClick={handleExportCSV}
                 disabled={exportingCSV}
-                className="flex items-center gap-2 px-4 py-2 bg-gray-600 text-white rounded-xl shadow hover:bg-gray-700 transition font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex items-center gap-2 px-4 py-2 bg-amber-600 text-white rounded-xl shadow hover:bg-amber-700 transition font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <FiDownload /> {exportingCSV ? 'Mengekspor...' : 'Export CSV'}
               </button>
-              <button className="flex items-center gap-2 px-4 py-2 bg-yellow-500 text-white rounded-xl shadow hover:bg-yellow-600 transition font-semibold">
-                <FiEdit2 /> Tanda Tangan Digital
-              </button>
               <button 
                 onClick={() => setShowModal(true)} 
-                className="flex items-center gap-2 px-4 py-2 bg-[#3B82F6] text-white rounded-xl shadow hover:bg-blue-700 transition font-semibold"
+                className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-xl shadow hover:bg-emerald-700 transition font-semibold"
               >
                 <FiPlus /> Tambah Laporan
               </button>
@@ -419,12 +436,12 @@ export default function ReportPage() {
 
           {showDeleteModal && (
             <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-              <div className="bg-white rounded-2xl p-6 w-full max-w-sm mx-4 relative animate-fadeIn">
+              <div className="bg-white rounded-2xl p-6 w-full max-w-sm mx-4 relative animate-fadeIn border border-red-100">
                 <h2 className="text-lg font-bold mb-4 flex items-center gap-2"><FiAlertCircle className="text-red-500"/> Konfirmasi Hapus</h2>
                 <p className="text-gray-600 mb-6">Anda yakin ingin menghapus laporan ini? Tindakan ini tidak dapat dibatalkan.</p>
                 <div className="flex justify-end gap-2">
-                  <button type="button" className="px-4 py-2 border rounded-xl" onClick={() => setShowDeleteModal(false)}>Batal</button>
-                  <button type="button" onClick={handleDelete} className="px-4 py-2 bg-red-600 text-white rounded-xl">Ya, Hapus</button>
+                  <button type="button" className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition" onClick={() => setShowDeleteModal(false)}>Batal</button>
+                  <button type="button" onClick={handleDelete} className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition font-semibold">Ya, Hapus</button>
                 </div>
               </div>
             </div>
@@ -438,144 +455,209 @@ export default function ReportPage() {
 
           {showModal && (
             <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-              <div className="bg-white rounded-2xl p-6 w-full max-w-lg mx-4 relative animate-fadeIn max-h-[90vh] overflow-y-auto">
+              <div className="bg-white rounded-2xl p-6 w-full max-w-lg mx-4 relative animate-fadeIn max-h-[90vh] overflow-y-auto border border-emerald-100">
                 <button className="absolute top-3 right-3 text-gray-400 hover:text-gray-700" onClick={() => setShowModal(false)}><FiX size={22} /></button>
-                <h2 className="text-xl font-bold mb-4 flex items-center gap-2"><FiFileText className="text-blue-600" /> Tambah Laporan Keuangan</h2>
-                {formError && <div className="mb-3 p-2 bg-red-100 text-red-700 rounded text-sm">{formError}</div>}
+                <h2 className="text-xl font-bold mb-4 flex items-center gap-2"><FiFileText className="text-emerald-600" /> Tambah Laporan Keuangan</h2>
+                <p className="text-sm text-gray-600 mb-4">"Sesungguhnya Allah menyukai orang-orang yang berbuat kebajikan" - QS. Al-Baqarah: 195</p>
+                {formError && <div className="mb-3 p-3 bg-red-100 text-red-700 rounded-lg text-sm border border-red-200">{formError}</div>}
                 <form className="space-y-4" onSubmit={handleAdd}>
                   <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1">Tanggal</label>
-                    <input type="date" className="w-full px-3 py-2 border rounded-xl" value={form.date} onChange={e => setForm(f => ({ ...f, date: e.target.value }))} required />
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Tanggal</label>
+                    <input type="date" className="w-full px-3 py-2 border border-emerald-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent" value={form.date} onChange={e => setForm(f => ({ ...f, date: e.target.value }))} required />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1">Deskripsi</label>
-                    <input type="text" className="w-full px-3 py-2 border rounded-xl" value={form.desc} onChange={e => setForm(f => ({ ...f, desc: e.target.value }))} required />
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Deskripsi</label>
+                    <input type="text" className="w-full px-3 py-2 border border-emerald-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent" value={form.desc} onChange={e => setForm(f => ({ ...f, desc: e.target.value }))} required />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1">Kategori</label>
-                    <select className="w-full px-3 py-2 border rounded-xl" value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))}>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Kategori</label>
+                    <select className="w-full px-3 py-2 border border-emerald-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent" value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))}>
                       {CATEGORY_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
                     </select>
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1">Nominal</label>
-                    <input type="number" className="w-full px-3 py-2 border rounded-xl" value={form.amount} onChange={e => setForm(f => ({ ...f, amount: e.target.value }))} required />
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Nominal</label>
+                    <input type="number" className="w-full px-3 py-2 border border-emerald-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent" value={form.amount} onChange={e => setForm(f => ({ ...f, amount: e.target.value }))} required />
                   </div>
 
-                  <div className="flex justify-end gap-2 mt-4">
-                    <button type="button" className="px-4 py-2 border rounded-xl" onClick={() => setShowModal(false)} disabled={adding}>Batal</button>
-                    <button type="submit" className="px-4 py-2 bg-[#00C570] text-white rounded-xl" disabled={adding}>{adding ? 'Menambah...' : 'Tambah Laporan'}</button>
+                  <div className="flex justify-end gap-2 mt-6">
+                    <button type="button" className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition" onClick={() => setShowModal(false)} disabled={adding}>Batal</button>
+                    <button type="submit" className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition font-semibold" disabled={adding}>{adding ? 'Menambah...' : 'Tambah Laporan'}</button>
                   </div>
                 </form>
               </div>
             </div>
           )}
 
-          <div className="bg-white rounded-xl shadow-sm p-4 mb-8 flex flex-col md:flex-row gap-6 items-center">
-            <div className="flex-1 w-full">
-              <div className="font-semibold text-gray-700 mb-2 flex items-center gap-2"><FiBarChart2 /> Trend Pendapatan & Pengeluaran Bulanan</div>
-              <div style={{height: '250px'}}>
-                <Bar data={chartData} options={{ responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }} />
+          {/* Summary Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-8">
+            <div className="bg-gradient-to-br from-emerald-100 to-emerald-50 rounded-xl p-6 flex flex-col items-center shadow-sm border border-emerald-200 hover:shadow-md transition-shadow relative overflow-hidden">
+              <div className="absolute top-2 right-2 text-emerald-200 text-lg">📈</div>
+              <div className="text-xs text-gray-500 mb-2 font-medium">Pendapatan</div>
+              <div className="text-xl font-bold text-emerald-700">{formatCurrency(summary.income)}</div>
+              <div className="text-xs text-emerald-600 mt-1">Total Income</div>
+            </div>
+            <div className="bg-gradient-to-br from-red-100 to-red-50 rounded-xl p-6 flex flex-col items-center shadow-sm border border-red-200 hover:shadow-md transition-shadow relative overflow-hidden">
+              <div className="absolute top-2 right-2 text-red-200 text-lg">📉</div>
+              <div className="text-xs text-gray-500 mb-2 font-medium">Pengeluaran</div>
+              <div className="text-xl font-bold text-red-700">{formatCurrency(summary.expenses)}</div>
+              <div className="text-xs text-red-600 mt-1">Total Expenses</div>
+            </div>
+            <div className="bg-gradient-to-br from-teal-100 to-teal-50 rounded-xl p-6 flex flex-col items-center shadow-sm border border-teal-200 hover:shadow-md transition-shadow relative overflow-hidden">
+              <div className="absolute top-2 right-2 text-teal-200 text-lg">🤲</div>
+              <div className="text-xs text-gray-500 mb-2 font-medium">ZIS</div>
+              <div className="text-xl font-bold text-teal-700">{formatCurrency(summary.zis)}</div>
+              <div className="text-xs text-teal-600 mt-1">Zakat & Sedekah</div>
+            </div>
+            <div className="bg-gradient-to-br from-purple-100 to-purple-50 rounded-xl p-6 flex flex-col items-center shadow-sm border border-purple-200 hover:shadow-md transition-shadow relative overflow-hidden">
+              <div className="absolute top-2 right-2 text-purple-200 text-lg">⚡</div>
+              <div className="text-xs text-gray-500 mb-2 font-medium">Laba Bersih</div>
+              <div className="text-xl font-bold text-purple-700">{formatCurrency(summary.net)}</div>
+              <div className="text-xs text-purple-600 mt-1">Net Profit</div>
+            </div>
+            <div className="bg-gradient-to-br from-amber-100 to-amber-50 rounded-xl p-6 flex flex-col items-center shadow-sm border border-amber-200 hover:shadow-md transition-shadow relative overflow-hidden">
+              <div className="absolute top-2 right-2 text-amber-200 text-lg">💰</div>
+              <div className="text-xs text-gray-500 mb-2 font-medium">Saldo Kas</div>
+              <div className="text-xl font-bold text-amber-700">{formatCurrency(summary.cash)}</div>
+              <div className="text-xs text-amber-600 mt-1">Cash Balance</div>
+            </div>
+          </div>
+
+          {/* Add section dividers */}
+          <hr className="my-8 border-t-2 border-dashed border-gray-200" />
+
+          {/* Analytics Chart */}
+          <div className="bg-white rounded-xl shadow-md p-4 mb-8 flex flex-col gap-2 hover:shadow-lg transition-shadow border border-emerald-100">
+            <div className="font-semibold text-gray-700 mb-1 flex items-center gap-2">
+              <span className="text-emerald-600">📊</span>
+              Trend Pendapatan & Pengeluaran Bulanan
+            </div>
+            <div className="text-xs text-gray-500 mb-2">"Dan apa saja yang kamu nafkahkan, maka Allah akan menggantinya" - QS. Saba': 39</div>
+            <div style={{height: '250px'}}>
+              <Bar data={chartData} options={{ responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }} />
+            </div>
+          </div>
+
+          {/* Add section dividers */}
+          <hr className="my-8 border-t-2 border-dashed border-gray-200" />
+
+          {/* Filter/Search Controls */}
+          <div className="bg-white rounded-xl shadow-sm p-4 mb-8 border border-emerald-100">
+            <div className="flex flex-col lg:flex-row gap-4">
+              {/* Search Bar */}
+              <div className="flex-1">
+                <div className="flex items-center gap-2">
+                  <FiSearch className="text-emerald-500 flex-shrink-0" />
+                  <input 
+                    type="text" 
+                    placeholder="Cari transaksi, kategori..." 
+                    className="w-full px-3 py-2 border border-emerald-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-sm" 
+                    value={search} 
+                    onChange={e => setSearch(e.target.value)} 
+                  />
+                </div>
+              </div>
+              
+              {/* Filter Dropdowns */}
+              <div className="flex flex-col sm:flex-row gap-3">
+                <div className="flex items-center gap-2">
+                  <FiFilter className="text-emerald-500 flex-shrink-0" />
+                  <select 
+                    className="flex-1 min-w-0 px-3 py-2 border border-emerald-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-sm" 
+                    value={statusFilter} 
+                    onChange={(e) => setStatusFilter(e.target.value as Transaction['aiStatus'] | 'all')}
+                  >
+                    <option value="all">Semua Status</option>
+                    {TYPE_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                  </select>
+                </div>
+                <select 
+                  className="flex-1 min-w-0 px-3 py-2 border border-emerald-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-sm" 
+                  value={categoryFilter} 
+                  onChange={(e) => setCategoryFilter(e.target.value)}
+                >
+                  <option value="all">Semua Kategori</option>
+                  {CATEGORY_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                </select>
+              </div>
+              
+              {/* Date Range */}
+              <div className="flex flex-col sm:flex-row gap-3">
+                <div className="flex items-center gap-2">
+                  <span className="text-gray-500 text-xs whitespace-nowrap">Dari</span>
+                  <input 
+                    type="date" 
+                    className="flex-1 min-w-0 px-3 py-2 border border-emerald-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-sm" 
+                    value={dateFrom} 
+                    onChange={e => setDateFrom(e.target.value)} 
+                  />
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-gray-500 text-xs whitespace-nowrap">s/d</span>
+                  <input 
+                    type="date" 
+                    className="flex-1 min-w-0 px-3 py-2 border border-emerald-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-sm" 
+                    value={dateTo} 
+                    onChange={e => setDateTo(e.target.value)} 
+                  />
+                </div>
               </div>
             </div>
-            <div className="hidden md:flex flex-col gap-2 items-center justify-center">
-              <FiTrendingUp className="text-4xl text-[#00C570]" />
-              <span className="text-xs text-gray-500">Analisis tren keuangan</span>
-            </div>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 mb-8">
-            <div className="flex flex-col items-center bg-white rounded-xl py-4 shadow-sm border-t-4 border-blue-500">
-              <FiTrendingUp className="text-2xl text-blue-500 mb-1" />
-              <span className="text-xs text-gray-500">Pendapatan</span>
-              <span className="font-bold text-lg text-blue-600">{formatCurrency(summary.income)}</span>
+          {/* Transactions Table */}
+          <div className="bg-white rounded-xl shadow-md overflow-x-auto mb-10 border border-emerald-100">
+            <div className="p-4 border-b border-emerald-100 bg-gradient-to-r from-emerald-50 to-teal-50">
+              <h3 className="font-semibold text-gray-800 flex items-center gap-2">
+                <span className="text-emerald-600">📋</span>
+                Daftar Transaksi Keuangan
+              </h3>
+              <p className="text-sm text-gray-600 mt-1">"Dan apa saja yang kamu nafkahkan atau apa saja yang kamu nazarkan, maka sesungguhnya Allah mengetahuinya" - QS. Al-Baqarah: 270</p>
             </div>
-            <div className="flex flex-col items-center bg-white rounded-xl py-4 shadow-sm border-t-4 border-red-500">
-              <FiTrendingDown className="text-2xl text-red-500 mb-1" />
-              <span className="text-xs text-gray-500">Pengeluaran</span>
-              <span className="font-bold text-lg text-red-600">{formatCurrency(summary.expenses)}</span>
-            </div>
-            <div className="flex flex-col items-center bg-white rounded-xl py-4 shadow-sm border-t-4 border-green-500">
-              <FiCreditCard className="text-2xl text-green-500 mb-1" />
-              <span className="text-xs text-gray-500">ZIS</span>
-              <span className="font-bold text-lg text-green-600">{formatCurrency(summary.zis)}</span>
-            </div>
-            <div className="flex flex-col items-center bg-white rounded-xl py-4 shadow-sm border-t-4 border-purple-500">
-              <FiZap className="text-2xl text-purple-500 mb-1" />
-              <span className="text-xs text-gray-500">Laba Bersih</span>
-              <span className="font-bold text-lg text-purple-600">{formatCurrency(summary.net)}</span>
-            </div>
-            <div className="flex flex-col items-center bg-white rounded-xl py-4 shadow-sm border-t-4 border-[#00C570]">
-              <FiBarChart2 className="text-2xl text-[#00C570] mb-1" />
-              <span className="text-xs text-gray-500">Saldo Kas</span>
-              <span className="font-bold text-lg text-[#00C570]">{formatCurrency(summary.cash)}</span>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-xl shadow-sm p-4 mb-8 flex flex-wrap gap-3 items-center">
-            <div className="flex items-center gap-2">
-              <FiSearch className="text-gray-400" />
-              <input type="text" placeholder="Cari transaksi..." className="px-2 py-1 border rounded" value={search} onChange={e => setSearch(e.target.value)} />
-            </div>
-            <div className="flex items-center gap-2">
-              <FiFilter className="text-gray-400" />
-              <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as Transaction['aiStatus'] | 'all')} className="bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-                <option value="all">Semua Status</option>
-                {TYPE_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-              </select>
-              <select value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)} className="bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-                <option value="all">Semua Kategori</option>
-                {CATEGORY_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-              </select>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-gray-500 text-xs">Dari</span>
-              <input type="date" className="px-2 py-1 border rounded" value={dateFrom} onChange={e => setDateFrom(e.target.value)} />
-              <span className="text-gray-500 text-xs">Sampai</span>
-              <input type="date" className="px-2 py-1 border rounded" value={dateTo} onChange={e => setDateTo(e.target.value)} />
-            </div>
-          </div>
-
-          <div className="bg-white rounded-xl shadow-sm overflow-x-auto">
-            <table className="w-full text-sm text-left text-gray-500">
-              <thead className="text-xs text-gray-700 uppercase bg-gray-50">
-                <tr>
-                  <th scope="col" className="px-6 py-3">ID Transaksi</th>
-                  <th scope="col" className="px-6 py-3">Tanggal</th>
-                  <th scope="col" className="px-6 py-3">Deskripsi</th>
-                  <th scope="col" className="px-6 py-3">Kategori</th>
-                  <th scope="col" className="px-6 py-3 text-right">Nominal</th>
-                  <th scope="col" className="px-6 py-3 text-center">Status AI</th>
-                  <th scope="col" className="px-6 py-3 text-center">Aksi</th>
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-gray-500 border-b border-emerald-100 bg-emerald-50">
+                  <th className="px-4 py-3 text-left font-medium">ID Transaksi</th>
+                  <th className="px-4 py-3 text-left font-medium">Tanggal</th>
+                  <th className="px-4 py-3 text-left font-medium">Deskripsi</th>
+                  <th className="px-4 py-3 text-left font-medium">Kategori</th>
+                  <th className="px-4 py-3 text-right font-medium">Nominal</th>
+                  <th className="px-4 py-3 text-center font-medium">Status AI</th>
+                  <th className="px-4 py-3 text-center font-medium">Aksi</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredTx.length > 0 ? (
                   filteredTx.map((tx: Transaction, index: number) => (
                     <Fragment key={tx.id}>
-                      <tr className="bg-white border-b hover:bg-gray-50">
-                        <td className="px-6 py-4 font-mono text-xs text-gray-700">{tx.id.slice(0, 8)}...</td>
-                        <td className="px-6 py-4">{tx.date}</td>
-                        <td className="px-6 py-4 font-medium text-gray-900">{tx.desc}</td>
-                        <td className="px-6 py-4">{tx.category}</td>
-                        <td className="px-6 py-4 text-right font-semibold">{formatCurrency(tx.amount)}</td>
-                        <td className="px-6 py-4 text-center">
+                      <tr className="border-b border-emerald-50 hover:bg-emerald-50/60 transition">
+                        <td className="px-4 py-3 font-mono text-xs text-gray-700">{tx.id.slice(0, 8)}...</td>
+                        <td className="px-4 py-3">{tx.date}</td>
+                        <td className="px-4 py-3 font-medium text-gray-900">{tx.desc}</td>
+                        <td className="px-4 py-3">
+                          <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700 border border-emerald-200">
+                            {tx.category}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-right font-semibold text-emerald-700">{formatCurrency(tx.amount)}</td>
+                        <td className="px-4 py-3 text-center">
                           <StatusBadge status={tx.aiStatus} />
                         </td>
-                        <td className="px-6 py-4 text-center flex items-center justify-center gap-2">
-                          <button onClick={() => setExpandedId(expandedId === tx.id ? null : tx.id)} className="text-blue-600 hover:text-blue-800">
+                        <td className="px-4 py-3 text-center flex items-center justify-center gap-2">
+                          <button onClick={() => setExpandedId(expandedId === tx.id ? null : tx.id)} className="text-emerald-600 hover:text-emerald-800 transition">
                             <FiChevronDown className={`transition-transform ${expandedId === tx.id ? 'rotate-180' : ''}`} />
                           </button>
-                          <button onClick={() => { setDeleteConfirm(tx.id); setShowDeleteModal(true); }} className="text-red-600 hover:text-red-800">
+                          <button onClick={() => { setDeleteConfirm(tx.id); setShowDeleteModal(true); }} className="text-red-600 hover:text-red-800 transition">
                             <FiTrash2 />
                           </button>
                         </td>
                       </tr>
                       {expandedId === tx.id && (
-                        <tr className="bg-gray-50">
+                        <tr className="bg-emerald-50/30">
                           <td colSpan={7} className="p-4">
-                            <div className="text-xs text-gray-700">
-                              <p><span className="font-semibold">Penjelasan AI:</span> {tx.aiExplanation || "Belum ada penjelasan."}</p>
+                            <div className="text-sm text-gray-700 bg-white p-3 rounded-lg border border-emerald-100">
+                              <p className="font-semibold text-emerald-700 mb-1">Penjelasan AI Syariah:</p>
+                              <p>{tx.aiExplanation || "Belum ada penjelasan dari AI."}</p>
                             </div>
                           </td>
                         </tr>
@@ -585,7 +667,11 @@ export default function ReportPage() {
                 ) : (
                   <tr>
                     <td colSpan={7} className="text-center py-8 text-gray-500">
-                      Tidak ada transaksi yang cocok dengan filter.
+                      <div className="flex flex-col items-center gap-2">
+                        <FiFileText className="text-4xl text-gray-300" />
+                        <div className="font-semibold">Tidak ada transaksi yang cocok dengan filter.</div>
+                        <div className="text-sm">Silakan ubah filter atau tambah transaksi baru.</div>
+                      </div>
                     </td>
                   </tr>
                 )}
@@ -593,51 +679,78 @@ export default function ReportPage() {
             </table>
           </div>
 
-          <div className="border-b border-gray-200 mb-6">
-             <nav className="-mb-px flex space-x-6 overflow-x-auto">
-               {mockTabs.map(t => (
-                <button key={t.key} onClick={() => setTab(t.key)} className={`whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm transition-colors ${tab === t.key ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>
-                {t.label}
-              </button>
-            ))}
-            </nav>
+          {/* Add section dividers */}
+          <hr className="my-8 border-t-2 border-dashed border-gray-200" />
+
+          {/* Report Tabs */}
+          <div className="bg-white rounded-xl shadow-sm p-4 mb-8 border border-emerald-100">
+            <div className="border-b border-emerald-100 mb-4">
+              <nav className="-mb-px flex space-x-6 overflow-x-auto">
+                {mockTabs.map(t => (
+                  <button 
+                    key={t.key} 
+                    onClick={() => setTab(t.key)} 
+                    className={`whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm transition-colors ${
+                      tab === t.key 
+                        ? 'border-emerald-600 text-emerald-600' 
+                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    }`}
+                  >
+                    {t.label}
+                  </button>
+                ))}
+              </nav>
+            </div>
           </div>
 
           {tab === "journal" && (<>
               {filteredTx.length === 0 ? (
-                <div className="bg-white rounded-xl shadow-sm p-8 flex flex-col items-center justify-center text-gray-400 text-center mb-8">
-                  <FiFileText className="text-4xl mb-2" />
+                <div className="bg-white rounded-xl shadow-sm p-8 flex flex-col items-center justify-center text-gray-400 text-center mb-8 border border-emerald-100">
+                  <FiFileText className="text-4xl mb-2 text-emerald-200" />
                   <div className="font-semibold">Belum ada data laporan untuk filter ini.</div>
                   <div className="text-xs">Silakan tambah laporan atau ubah filter.</div>
                 </div>
               ) : (
-            <div className="bg-white rounded-xl shadow-sm p-4 overflow-x-auto mb-8">
+            <div className="bg-white rounded-xl shadow-md p-4 overflow-x-auto mb-8 border border-emerald-100 hover:shadow-lg transition-shadow mb-20">
+              <div className="p-4 border-b border-emerald-100 bg-gradient-to-r from-emerald-50 to-teal-50 mb-4">
+                <h3 className="font-semibold text-gray-800 flex items-center gap-2">
+                  <span className="text-emerald-600">📝</span>
+                  Jurnal Umum
+                </h3>
+                <p className="text-sm text-gray-600 mt-1">"Sesungguhnya Allah menyukai orang-orang yang berbuat kebajikan" - QS. Al-Baqarah: 195</p>
+              </div>
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="text-gray-500 border-b border-gray-100">
+                  <tr className="text-gray-500 border-b border-emerald-100 bg-emerald-50">
                     <th className="px-4 py-3 text-left font-medium">Tanggal</th>
                     <th className="px-4 py-3 text-left font-medium">Deskripsi</th>
                     <th className="px-4 py-3 text-left font-medium">Kategori</th>
                     <th className="px-4 py-3 text-right font-medium">Nominal</th>
                     <th className="px-4 py-3 text-center font-medium">AI Syariah</th>
-                        <th className="px-4 py-3 w-12 text-center font-medium"></th>
+                    <th className="px-4 py-3 w-12 text-center font-medium"></th>
                   </tr>
                 </thead>
                 <tbody>
                       {filteredTx.map((tx: Transaction, index: number) => (
                         <Fragment key={tx.id}>
-                          <tr onClick={() => setExpandedId(expandedId === tx.id ? null : tx.id)} className="cursor-pointer border-b border-gray-50 hover:bg-gray-50 transition">
+                          <tr onClick={() => setExpandedId(expandedId === tx.id ? null : tx.id)} className="cursor-pointer border-b border-emerald-50 hover:bg-emerald-50/60 transition">
                       <td className="px-4 py-3">{tx.date}</td>
                       <td className="px-4 py-3">{tx.desc}</td>
-                      <td className="px-4 py-3">{tx.category}</td>
-                      <td className="px-4 py-3 text-right">{formatCurrency(tx.amount)}</td>
+                      <td className="px-4 py-3">
+                        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700 border border-emerald-200">
+                          {tx.category}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-right font-semibold text-emerald-700">{formatCurrency(tx.amount)}</td>
                             <td className="px-4 py-3 text-center"><StatusBadge status={tx.aiStatus} /></td>
-                            <td className="px-4 py-3 text-center text-gray-400"><FiChevronDown className={`transform transition-transform ${expandedId === tx.id ? 'rotate-180' : ''}`} /></td>
+                            <td className="px-4 py-3 text-center text-emerald-400"><FiChevronDown className={`transform transition-transform ${expandedId === tx.id ? 'rotate-180' : ''}`} /></td>
                     </tr>
                           {expandedId === tx.id && (
-                            <tr className="bg-gray-50"><td colSpan={6} className="p-4 text-sm text-gray-600">
-                                <p className="font-semibold text-gray-800 mb-1">Penjelasan AI:</p>
-                                <div className="whitespace-pre-wrap">{tx.aiExplanation || 'Tidak ada penjelasan dari AI.'}</div>
+                            <tr className="bg-emerald-50/30"><td colSpan={6} className="p-4 text-sm text-gray-600">
+                                <div className="bg-white p-3 rounded-lg border border-emerald-100">
+                                  <p className="font-semibold text-emerald-700 mb-1">Penjelasan AI Syariah:</p>
+                                  <div className="whitespace-pre-wrap">{tx.aiExplanation || 'Tidak ada penjelasan dari AI.'}</div>
+                                </div>
                             </td></tr>
                           )}
                         </Fragment>

@@ -362,7 +362,7 @@ export default function PayrollPage() {
             </div>
           )}
 
-          <div className="bg-white rounded-xl shadow-md overflow-x-auto border border-emerald-100">
+          <div className="bg-white rounded-xl shadow-md overflow-x-auto border border-emerald-100 mb-25">
             <div className="p-4 border-b border-emerald-100 bg-gradient-to-r from-emerald-50 to-teal-50">
               <h3 className="font-semibold text-gray-800 flex items-center gap-2">
                 <span className="text-emerald-600">👥</span>
