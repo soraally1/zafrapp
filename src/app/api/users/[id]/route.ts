@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { deleteUser, getUser } from '../../service/firebaseUserService';
 import { admin } from '@/lib/firebaseAdmin';
 
-export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const authHeader = req.headers.get('authorization');
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -16,7 +16,7 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
     if (!userDoc.exists || userDoc.data()?.role !== 'hr-keuangan') {
       return NextResponse.json({ message: 'Forbidden: Not authorized' }, { status: 403 });
     }
-    const { id } = params;
+    const { id } = await params;
     const result = await deleteUser(id);
     return NextResponse.json(result);
   } catch (error: any) {
@@ -24,7 +24,7 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
   }
 }
 
-export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ id:string }> }) {
   try {
     const authHeader = req.headers.get('authorization');
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -38,7 +38,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     if (!userDoc.exists || userDoc.data()?.role !== 'hr-keuangan') {
       return NextResponse.json({ message: 'Forbidden: Not authorized' }, { status: 403 });
     }
-    const { id } = params;
+    const { id } = await params;
     const user = await getUser(id);
     return NextResponse.json(user);
   } catch (error: any) {

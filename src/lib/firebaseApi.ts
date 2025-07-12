@@ -37,7 +37,7 @@ export async function saveUserToFirestore({ uid, email, name, role, createdAt }:
     role,
     createdAt
   };
-  await db.collection('users').doc(uid).set(userDoc);
+  await setDoc(doc(db, 'users', uid), userDoc);
 }
 
 export async function saveMitraData({ uid, namaMitra, alamatMitra, detailBisnis, jenisUsaha, createdAt }: { uid: string; namaMitra: string; alamatMitra: string; detailBisnis: string; jenisUsaha: string; createdAt: string }) {
@@ -49,5 +49,5 @@ export async function saveMitraData({ uid, namaMitra, alamatMitra, detailBisnis,
     jenisUsaha,
     createdAt
   };
-  await db.collection('mitra').doc(uid).set(mitraDoc);
+  await setDoc(doc(db, 'mitra', uid), mitraDoc);
 } 

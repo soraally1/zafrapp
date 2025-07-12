@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { updateUserRole } from '../../../service/firebaseUserService';
 import { admin } from '@/lib/firebaseAdmin';
 
-export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
+export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const authHeader = req.headers.get('authorization');
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -16,7 +16,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     if (!userDoc.exists || userDoc.data()?.role !== 'hr-keuangan') {
       return NextResponse.json({ message: 'Forbidden: Not authorized' }, { status: 403 });
     }
-    const { id } = params;
+    const { id } = await params;
     const body = await req.json();
     const { role } = body;
     if (!role) {
