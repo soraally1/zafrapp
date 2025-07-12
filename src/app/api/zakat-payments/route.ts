@@ -77,7 +77,7 @@ export async function GET(req: NextRequest) {
   }
 }
 
-// PUT: HR marks zakat payment as forwarded to LAZ
+// PUT: HR marks zakat payment as forwarded to LAZ or distributed
 export async function PUT(req: NextRequest) {
   try {
     const authHeader = req.headers.get('authorization');
@@ -93,15 +93,20 @@ export async function PUT(req: NextRequest) {
       return NextResponse.json({ message: 'Forbidden: Not authorized' }, { status: 403 });
     }
     const body = await req.json();
-    const { zakatPaymentId, laz } = body;
-    if (!zakatPaymentId || !laz) {
-      return NextResponse.json({ message: 'Missing zakatPaymentId or laz' }, { status: 400 });
+    const { zakatPaymentId, laz, status, beneficiary, proof, report } = body;
+    if (!zakatPaymentId) {
+      return NextResponse.json({ message: 'Missing zakatPaymentId' }, { status: 400 });
     }
-    await admin.firestore().collection(COLLECTION).doc(zakatPaymentId).update({
-      status: 'forwarded',
-      laz,
-      forwardedAt: new Date().toISOString(),
-    });
+    const updateData: any = {};
+    if (laz) updateData.laz = laz;
+    if (status) updateData.status = status;
+    if (status === 'Distributed') {
+      updateData.distributedAt = new Date().toISOString();
+      if (beneficiary !== undefined) updateData.beneficiary = beneficiary;
+      if (proof !== undefined) updateData.proof = proof;
+      if (report !== undefined) updateData.report = report;
+    }
+    await admin.firestore().collection(COLLECTION).doc(zakatPaymentId).update(updateData);
     return NextResponse.json({ success: true });
   } catch (error: any) {
     return NextResponse.json({ message: error.message || 'Failed to update zakat payment' }, { status: 500 });

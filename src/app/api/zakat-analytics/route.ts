@@ -24,18 +24,30 @@ export async function GET() {
       if (!perLaz[laz]) perLaz[laz] = 0;
       perLaz[laz] += zp.amount || 0;
     });
-    // Allocation
+    // Allocation with type mapping
     const allocation: Record<string, number> = { zakat: 0, infaq: 0, sedekah: 0 };
     zakatPayments.forEach((zp: any) => {
-      const type = (zp.type || 'zakat').toLowerCase();
+      let type = (zp.type || 'zakat').toLowerCase();
+      if (type.includes('zakat')) type = 'zakat';
+      else if (type.includes('infaq')) type = 'infaq';
+      else if (type.includes('sedekah')) type = 'sedekah';
       if (Object.prototype.hasOwnProperty.call(allocation, type)) allocation[type] += zp.amount || 0;
     });
+
+    // Calculate distributed and balance
+    const totalAllocation = allocation.zakat + allocation.infaq + allocation.sedekah;
+    const distributed = zakatPayments
+      .filter((zp: any) => zp.status === 'Distributed')
+      .reduce((sum: number, zp: any) => sum + (zp.amount || 0), 0);
+    const balance = totalAllocation - distributed;
 
     return NextResponse.json({
       success: true,
       monthly,
       perLaz,
       allocation,
+      distributed,
+      balance,
       csrActivities
     });
   } catch (error: any) {

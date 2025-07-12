@@ -1,4 +1,5 @@
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&display=swap');
 @import "tailwindcss";
 
 :root {
@@ -21,4 +22,8 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: 'Plus Jakarta Sans', sans-serif;
+}
+
+.font-arabic {
+  font-family: 'Amiri', serif;
 }

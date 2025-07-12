@@ -4,7 +4,6 @@ import Image from "next/image";
 import Sidebar from "../components/Sidebar";
 import { onAuthStateChanged } from "firebase/auth";
 import { LiaMedalSolid, LiaClockSolid, LiaWalletSolid, LiaChartBarSolid, LiaUserSolid, LiaHomeSolid, LiaDonateSolid, LiaRobotSolid } from "react-icons/lia";
-import { BsStars } from "react-icons/bs";
 import { IoMdCamera } from "react-icons/io";
 import { auth } from "@/lib/firebaseApi";
 import { useRouter } from "next/navigation";
@@ -63,7 +62,7 @@ function getRoleShortcuts(role: string) {
   // fallback for unknown role
   return [
     { id: "profile", label: "Profil", icon: <LiaUserSolid size={28} className="text-blue-400" />, href: "/profile" },
-];
+  ];
 }
 
 function getRoleBadge(role: string) {
@@ -102,7 +101,7 @@ function getRoleFeatures(role: string) {
   // fallback for unknown role
   return [
     { id: "profile", label: "Profil", icon: <LiaUserSolid size={32} className="text-blue-400" />, desc: "Lihat dan edit profil Anda", href: "/profile" },
-];
+  ];
 }
 
 export default function ProfilePage() {
@@ -342,7 +341,7 @@ export default function ProfilePage() {
                       <span className="text-base font-semibold text-gray-900 text-center">{item.label}</span>
                       <span className="text-xs text-gray-500 text-center">{item.desc}</span>
                     </a>
-                    ))}
+                  ))}
                 </div>
               </div>
             </div>

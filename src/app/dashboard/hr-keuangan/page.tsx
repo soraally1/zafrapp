@@ -30,8 +30,8 @@ import {
 import { format } from "date-fns";
 import { aggregatePayrollSummary, countProcessedSlips } from "./hrDashboardLogic";
 import { MdOutlineAttachMoney, MdOutlineCardGiftcard, MdOutlineRemoveCircleOutline, MdOutlineMosque, MdOutlineSavings } from 'react-icons/md';
-import { FiCheckCircle, FiAlertCircle, FiCalendar, FiBarChart2, FiUsers, FiClipboard, FiChevronRight, FiPlus, FiEdit2 } from 'react-icons/fi';
-import { addMonths, subMonths, startOfMonth, endOfMonth, getDaysInMonth, isSameDay, isSameMonth, isToday as isTodayFn } from 'date-fns';
+import { FiCheckCircle, FiCalendar, FiBarChart2, FiClipboard, FiChevronRight, FiPlus, FiEdit2 } from 'react-icons/fi';
+import { addMonths, subMonths,  getDaysInMonth, isSameDay, isToday as isTodayFn } from 'date-fns';
 
 export default function HRKeuanganDashboard() {
   const [userData, setUserData] = useState<any>(null);

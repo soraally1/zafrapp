@@ -20,8 +20,19 @@ export async function POST(req: NextRequest) {
     if (!title || !amount || !date) {
       return NextResponse.json({ message: 'Missing required fields' }, { status: 400 });
     }
+    
+    // Validate photos array contains base64 strings
+    const validPhotos = Array.isArray(photos) ? photos.filter(photo => 
+      typeof photo === 'string' && photo.startsWith('data:image/')
+    ) : [];
+    
     const docRef = await admin.firestore().collection(COLLECTION).add({
-      title, amount, date, photos: photos || [], report: report || ''
+      title, 
+      amount, 
+      date, 
+      photos: validPhotos, 
+      report: report || '',
+      createdAt: new Date().toISOString()
     });
     return NextResponse.json({ success: true, id: docRef.id });
   } catch (error: any) {

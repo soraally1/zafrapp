@@ -114,7 +114,7 @@ export default function Topbar({ userName, userRole, userPhoto, loading = false 
           <div className="absolute right-0 top-12 sm:top-14 w-44 xs:w-48 bg-white rounded-2xl shadow-2xl border border-gray-100 py-2 z-50 animate-fadeInDropdown origin-top-right">
             <button
               className="w-full text-left px-4 sm:px-5 py-2 text-gray-700 hover:bg-[#E6FFF4] hover:text-[#00C570] font-medium rounded-t-2xl transition-colors flex items-center gap-2 duration-150"
-              onClick={() => { setDropdownOpen(false); router.push("/Profile"); }}
+              onClick={() => { setDropdownOpen(false); router.push("/profile"); }}
             >
               <IoMdPerson size={18} />
               Profil Saya
