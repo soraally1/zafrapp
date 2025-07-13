@@ -205,18 +205,18 @@ export default function TransactionPage() {
                 <div className="flex flex-col gap-4">
               <div>
                     <label className="block text-base font-semibold text-[#00C570] mb-2" htmlFor="tanggal-transaksi">Tanggal Transaksi</label>
-                    <input id="tanggal-transaksi" type="date" className="w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-[#00C570]/40 focus:outline-none border-gray-200 focus:border-transparent transition shadow-sm" value={form.date} onChange={e => setForm(f => ({ ...f, date: e.target.value }))} required />
+                    <input id="tanggal-transaksi" type="date" className="w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-[#00C570]/40  text-slate-900 focus:outline-none border-gray-200 focus:border-transparent transition shadow-sm" value={form.date} onChange={e => setForm(f => ({ ...f, date: e.target.value }))} required />
                     <span className="text-xs text-gray-400">Format: yyyy-mm-dd</span>
               </div>
               <div>
                     <label className="block text-base font-semibold text-[#00C570] mb-2" htmlFor="kategori-transaksi">Kategori Transaksi</label>
-                    <select id="kategori-transaksi" className="w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-[#00C570]/40 focus:outline-none border-gray-200 focus:border-transparent transition shadow-sm" value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))}>
+                    <select id="kategori-transaksi" className="w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-[#00C570]/40 focus:outline-none  text-slate-900 border-gray-200 focus:border-transparent transition shadow-sm" value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))}>
                   {CATEGORY_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
                 </select>
               </div>
               <div>
                     <label className="block text-base font-semibold text-[#00C570] mb-2" htmlFor="tipe-transaksi">Tipe Transaksi</label>
-                    <select id="tipe-transaksi" className="w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-[#00C570]/40 focus:outline-none border-gray-200 focus:border-transparent transition shadow-sm" value={form.type} onChange={e => setForm(f => ({ ...f, type: e.target.value }))}>
+                    <select id="tipe-transaksi" className="w-full px-4 py-3 border  text-slate-900 rounded-xl focus:ring-2 focus:ring-[#00C570]/40 focus:outline-none border-gray-200 focus:border-transparent transition shadow-sm" value={form.type} onChange={e => setForm(f => ({ ...f, type: e.target.value }))}>
                       {TYPE_OPTIONS.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
                     </select>
                   </div>
@@ -224,12 +224,12 @@ export default function TransactionPage() {
                 <div className="flex flex-col gap-4">
               <div>
                     <label className="block text-base font-semibold text-[#00C570] mb-2" htmlFor="nominal">Nominal</label>
-                    <input id="nominal" type="number" placeholder="Contoh: 50000" className="w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-[#00C570]/40 focus:outline-none border-gray-200 focus:border-transparent transition shadow-sm placeholder:text-black" value={form.nominal} onChange={e => setForm(f => ({ ...f, nominal: e.target.value }))} required />
+                    <input id="nominal" type="number" placeholder="Contoh: 50000" className="w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-[#00C570]/40 focus:outline-none border-gray-200 text-slate-900 focus:border-transparent transition shadow-sm placeholder:text-black" value={form.nominal} onChange={e => setForm(f => ({ ...f, nominal: e.target.value }))} required />
                     <span className="text-xs text-gray-400">Masukkan angka tanpa titik/koma</span>
                   </div>
                   <div className="flex-1 flex flex-col">
                     <label className="block text-base font-semibold text-[#00C570] mb-2" htmlFor="deskripsi">Deskripsi</label>
-                    <textarea id="deskripsi" placeholder="Contoh: Pembelian bahan baku untuk produksi" className="w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-[#00C570]/40 focus:outline-none border-gray-200 focus:border-transparent transition shadow-sm placeholder:text-black min-h-[80px]" value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} required rows={3}></textarea>
+                    <textarea id="deskripsi" placeholder="Contoh: Pembelian bahan baku untuk produksi" className="w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-[#00C570]/40 focus:outline-none border-gray-200  text-slate-900 focus:border-transparent transition shadow-sm placeholder:text-black min-h-[80px]" value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} required rows={3}></textarea>
                     <span className="text-xs text-gray-400 mt-1">Jelaskan transaksi secara singkat dan jelas</span>
               </div>
                   <div className="flex justify-end mt-2">

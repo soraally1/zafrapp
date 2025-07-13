@@ -263,7 +263,7 @@ export default function ProfilePage() {
               />
             )}
             {/* Upload overlay */}
-            <label className="absolute inset-0 bg-black/20 opacity-0 hover:opacity-100 flex items-center justify-center cursor-pointer transition-all duration-300">
+            <label className="absolute inset-0 bg-black/20 flex items-center justify-center cursor-pointer transition-all duration-300">
               <span className="bg-white/95 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium shadow-lg flex items-center gap-2">
                 <IoMdCamera size={20} />
                 {uploadingHeader ? "Mengunggah..." : "Ubah Foto Sampul"}

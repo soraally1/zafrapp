@@ -139,7 +139,7 @@ export default function AIHRPage() {
             </div>
             <form className="flex gap-2 mt-2" onSubmit={e => { e.preventDefault(); if (input.trim()) { handleAsk(input.trim()); } }}>
               <input
-                className="flex-1 border rounded-xl px-3 py-2 text-sm focus:outline-[#00C570]"
+                className="flex-1 text-slate-900 border rounded-xl px-3 py-2 text-sm focus:outline-[#00C570]"
                 placeholder="Tulis pertanyaan Anda..."
                 value={input}
                 onChange={e => setInput(e.target.value)}
