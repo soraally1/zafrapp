@@ -1061,7 +1061,7 @@ export default function KaryawanDashboard() {
                     <CardTitle>Event Mendatang</CardTitle>
                   </div>
                 </CardHeader>
-                <CardContent className="space-y-4">
+                <CardContent className="space-y-4 ">
                   <Button
                     className="w-full mb-4"
                     variant="primary"
@@ -1198,13 +1198,13 @@ export default function KaryawanDashboard() {
             >
               ✖️
             </button>
-            <h2 className="text-xl font-bold mb-4">{editingEvent ? 'Edit Event' : 'Tambah Event'}</h2>
+            <h2 className="text-xl font-bold mb-4 text-slate-900">{editingEvent ? 'Edit Event' : 'Tambah Event'}</h2>
             <form
               onSubmit={e => {
                 e.preventDefault();
                 editingEvent ? handleEditEvent() : handleAddEvent();
               }}
-              className="space-y-4"
+              className="space-y-4 text-slate-900"
             >
               <div>
                 <label className="block text-sm font-medium text-emerald-800 mb-1">Tanggal</label>

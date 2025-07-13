@@ -254,7 +254,7 @@ export default function HRKeuanganDashboard() {
               <span className="block sm:hidden text-xs text-gray-400 mt-1 ml-1">Geser untuk melihat lebih banyak</span>
             </div>
             {/* Calendar */}
-            <div className="flex-1 w-full bg-white rounded-2xl shadow-lg p-2 sm:p-4 md:p-6 flex flex-col gap-3 sm:gap-4 border border-[#e0e0e0] relative overflow-hidden mx-auto max-w-xs sm:max-w-sm md:max-w-xs">
+            <div className="flex-1 w-full bg-white rounded-2xl shadow-lg p-2 sm:p-4 md:p-6 flex flex-col gap-3 sm:gap-4 border border-[#e0e0e0] relative overflow-hidden mx-auto max-w-xs sm:max-w-sm md:max-w-xs text-slate-900">
               <div className="flex items-center justify-between mb-2">
                 <button onClick={() => setCalendarMonth(subMonths(calendarMonth, 1))} className="text-gray-400 hover:text-[#00C570] px-2 py-1 rounded transition-all">&lt;</button>
                 <span className="font-bold text-lg flex items-center gap-2">
@@ -318,7 +318,7 @@ export default function HRKeuanganDashboard() {
               {/* ZAFRA watermark logo */}
               <Image src="/zafra.svg" alt="ZAFRA" width={56} height={56} className="absolute bottom-2 right-2 opacity-10 pointer-events-none select-none" />
               <div className="flex items-center justify-between mb-2">
-                <span className="font-bold text-lg flex items-center gap-2"><FiClipboard className="text-[#00C570]" />Tugas HR</span>
+                <span className="font-bold text-lg flex items-center gap-2 text-slate-900" ><FiClipboard className="text-[#00C570]"/>Tugas HR</span>
                 <span className="text-xs text-[#00C570] cursor-pointer hover:underline flex items-center gap-1">Lihat semua <FiChevronRight /></span>
               </div>
               <div className="flex-1 overflow-y-auto pr-1">
@@ -349,7 +349,7 @@ export default function HRKeuanganDashboard() {
               </div>
               {/* Recent Activity Feed */}
               <div className="flex-1 w-full bg-white rounded-2xl shadow-2xl p-3 sm:p-6 flex flex-col gap-3 sm:gap-4 border border-[#e0e0e0] min-h-[260px] mt-3 md:mt-0">
-                <h3 className="font-bold text-lg mb-2 flex items-center gap-2"><FiBarChart2 className="text-[#00C570]" />Aktivitas Terbaru</h3>
+                <h3 className="font-bold text-lg mb-2 flex items-center gap-2 text-slate-900"><FiBarChart2 className="text-[#00C570]" />Aktivitas Terbaru</h3>
                 {/* Placeholder: Replace with real activity data */}
                 <ul className="flex flex-col gap-2 text-sm text-gray-700">
                   {activities.length === 0 && <li>Tidak ada aktivitas terbaru.</li>}
@@ -369,7 +369,7 @@ export default function HRKeuanganDashboard() {
             {/* ZAFRA watermark logo */}
             <Image src="/zafra.svg" alt="ZAFRA" width={56} height={56} className="absolute bottom-2 right-2 opacity-10 pointer-events-none select-none" />
             <div className="flex items-center justify-between mb-4">
-              <span className="font-bold text-lg flex items-center gap-2"><FiBarChart2 className="text-[#00C570]" />Laporan Keuangan</span>
+              <span className="font-bold text-lg flex items-center gap-2 text-slate-900"><FiBarChart2 className="text-[#00C570]" />Laporan Keuangan</span>
               <button className="text-xs text-white bg-[#00C570] hover:bg-green-600 px-4 py-2 rounded-lg shadow font-semibold flex items-center gap-1 transition-all"><FiChevronRight /> Lihat semua</button>
             </div>
             {/* Report Cards */}

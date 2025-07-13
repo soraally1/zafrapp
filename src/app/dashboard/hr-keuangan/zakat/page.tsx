@@ -443,7 +443,7 @@ export default function ZakatPage() {
                   <input 
                     type="text" 
                     placeholder="Cari transaksi, penerima, jenis..." 
-                    className="w-full px-3 py-2 border border-emerald-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-sm" 
+                    className="w-full px-3 py-2 border border-emerald-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-sm text-slate-900" 
                     value={search} 
                     onChange={e => setSearch(e.target.value)} 
                   />
@@ -455,7 +455,7 @@ export default function ZakatPage() {
                 <div className="flex items-center gap-2">
                   <FiFilter className="text-emerald-500 flex-shrink-0" />
                   <select 
-                    className="flex-1 min-w-0 px-3 py-2 border border-emerald-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-sm" 
+                    className="flex-1 min-w-0 px-3 py-2 border border-emerald-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-sm text-slate-900" 
                     value={typeFilter} 
                     onChange={e => setTypeFilter(e.target.value)}
                   >
@@ -464,7 +464,7 @@ export default function ZakatPage() {
                   </select>
                 </div>
                 <select 
-                  className="flex-1 min-w-0 px-3 py-2 border border-emerald-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-sm" 
+                  className="flex-1 min-w-0 px-3 py-2 border border-emerald-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-sm text-slate-900" 
                   value={lazFilter} 
                   onChange={e => setLazFilter(e.target.value)}
                 >
@@ -472,7 +472,7 @@ export default function ZakatPage() {
                   {lazOptionsFromData.map(opt => <option key={opt} value={opt}>{opt}</option>)}
                 </select>
                 <select 
-                  className="flex-1 min-w-0 px-3 py-2 border border-emerald-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-sm" 
+                  className="flex-1 min-w-0 px-3 py-2 border border-emerald-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-sm text-slate-900" 
                   value={statusFilter} 
                   onChange={e => setStatusFilter(e.target.value)}
                 >
@@ -487,7 +487,7 @@ export default function ZakatPage() {
                   <span className="text-gray-500 text-xs whitespace-nowrap">Dari</span>
                   <input 
                     type="date" 
-                    className="flex-1 min-w-0 px-3 py-2 border border-emerald-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-sm" 
+                    className="flex-1 min-w-0 px-3 py-2 border border-emerald-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-sm text-slate-900" 
                     value={dateFrom} 
                     onChange={e => setDateFrom(e.target.value)} 
                   />
@@ -496,7 +496,7 @@ export default function ZakatPage() {
                   <span className="text-gray-500 text-xs whitespace-nowrap">s/d</span>
                   <input 
                     type="date" 
-                    className="flex-1 min-w-0 px-3 py-2 border border-emerald-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-sm" 
+                    className="flex-1 min-w-0 px-3 py-2 border border-emerald-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-sm text-slate-900" 
                     value={dateTo} 
                     onChange={e => setDateTo(e.target.value)} 
                   />
@@ -748,9 +748,9 @@ export default function ZakatPage() {
                   <p className="text-sm text-gray-600">"Sebaik-baik manusia adalah yang paling bermanfaat bagi manusia" - HR. Ahmad</p>
                 </div>
                 <div className="flex gap-3">
-                  <input type="text" className="flex-1 px-3 py-2 border border-emerald-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent" placeholder="Judul Kegiatan" value={csrForm.title} onChange={e => setCsrForm(f => ({ ...f, title: e.target.value }))} required />
-                  <input type="number" className="w-32 px-3 py-2 border border-emerald-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent" placeholder="Nominal" value={csrForm.amount} onChange={e => setCsrForm(f => ({ ...f, amount: e.target.value }))} required />
-                  <input type="date" className="w-40 px-3 py-2 border border-emerald-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent" value={csrForm.date} onChange={e => setCsrForm(f => ({ ...f, date: e.target.value }))} required />
+                  <input type="text" className="flex-1 px-3 py-2 border border-emerald-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-slate-900" placeholder="Judul Kegiatan" value={csrForm.title} onChange={e => setCsrForm(f => ({ ...f, title: e.target.value }))} required />
+                  <input type="number" className="w-32 px-3 py-2 border border-emerald-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-slate-900" placeholder="Nominal" value={csrForm.amount} onChange={e => setCsrForm(f => ({ ...f, amount: e.target.value }))} required />
+                  <input type="date" className="w-40 px-3 py-2 border border-emerald-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-slate-900" value={csrForm.date} onChange={e => setCsrForm(f => ({ ...f, date: e.target.value }))} required />
                 </div>
                 <div className="space-y-2">
                   <label className="block text-sm font-medium text-gray-700 flex items-center gap-2">
@@ -763,7 +763,7 @@ export default function ZakatPage() {
                     multiple 
                     accept="image/*" 
                     disabled={imageProcessing}
-                    className="px-3 py-2 border border-emerald-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent w-full disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="px-3 py-2 border border-emerald-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent w-full disabled:opacity-50 disabled:cursor-not-allowed text-slate-900 text-slate-900"
                     onChange={async (e) => {
                       const files = Array.from(e.target.files || []);
                       
@@ -803,11 +803,11 @@ export default function ZakatPage() {
                       <div className="flex gap-3 flex-wrap">
                         {csrForm.photos.map((photo, idx) => (
                           <div key={idx} className="relative">
-                            <img src={photo} alt={`Preview ${idx + 1}`} className="w-32 h-32 object-cover rounded-lg border border-emerald-200 shadow-sm hover:shadow-md transition-shadow cursor-pointer" />
+                            <img src={photo} alt={`Preview ${idx + 1}`} className="w-32 h-32 object-cover rounded-lg border border-emerald-200 shadow-sm hover:shadow-md transition-shadow cursor-pointer text-slate-900" />
                             <button
                               type="button"
                               onClick={() => setCsrForm(f => ({ ...f, photos: f.photos.filter((_, i) => i !== idx) }))}
-                              className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-7 h-7 flex items-center justify-center text-sm hover:bg-red-600 font-bold"
+                              className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-7 h-7 flex items-center justify-center text-sm hover:bg-red-600 font-bold "
                             >
                               ×
                             </button>
@@ -817,9 +817,9 @@ export default function ZakatPage() {
                     </div>
                   )}
                 </div>
-                <textarea className="px-3 py-2 border border-emerald-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent" placeholder="Laporan / Keterangan" value={csrForm.report} onChange={e => setCsrForm(f => ({ ...f, report: e.target.value }))} />
+                <textarea className="px-3 py-2 border border-emerald-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-slate-900" placeholder="Laporan / Keterangan" value={csrForm.report} onChange={e => setCsrForm(f => ({ ...f, report: e.target.value }))} />
                 <div className="flex gap-2 justify-end">
-                  <button type="button" className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition" onClick={() => setShowCsrForm(false)} disabled={csrFormLoading}>Batal</button>
+                  <button type="button" className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition text-red-900" onClick={() => setShowCsrForm(false)} disabled={csrFormLoading}>Batal</button>
                   <button type="submit" className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition font-semibold" disabled={csrFormLoading}>
                     {csrFormLoading ? 'Menyimpan...' : 'Simpan Kegiatan'}
                   </button>
@@ -849,7 +849,7 @@ export default function ZakatPage() {
                           key={idx} 
                           src={src} 
                           alt="Dokumentasi" 
-                          className="w-28 h-28 object-cover rounded-lg border border-emerald-200 shadow-sm hover:shadow-lg transition-all duration-200 cursor-pointer hover:scale-105"
+                          className="w-28 h-28 object-cover rounded-lg border border-emerald-200 shadow-sm hover:shadow-lg transition-all duration-200 cursor-pointer hover:scale-105 "
                           onClick={() => setSelectedImage(src)}
                         />
                         ))}

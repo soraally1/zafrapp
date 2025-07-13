@@ -341,7 +341,7 @@ export default function EmployeeManagement() {
           {/* Create/Edit User Modal */}
           {modalType && (
             <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-              <div className="bg-white rounded-2xl p-6 w-full max-w-md mx-4 relative animate-fadeIn border border-emerald-100">
+              <div className="bg-white rounded-2xl p-6 w-full max-w-md mx-4 relative animate-fadeIn border border-emerald-100 text-slate-900">
                 <button
                   onClick={closeModal}
                   className="absolute right-4 top-4 text-gray-400 hover:text-gray-600"
@@ -458,7 +458,7 @@ export default function EmployeeManagement() {
           <div className="bg-white rounded-xl shadow-sm p-4 mb-8 border border-emerald-100">
             <div className="flex flex-col lg:flex-row gap-4">
               {/* Search Bar */}
-              <div className="flex-1">
+              <div className="flex-1 text-slate-900">
                 <div className="flex items-center gap-2">
                   <FiSearch className="text-emerald-500 flex-shrink-0" size={20} />
                   <input

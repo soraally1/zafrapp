@@ -298,7 +298,7 @@ export default function PayrollPage() {
               <Bar data={chartData} options={chartOptions} height={220} />
             </div>
             {/* Controls Card */}
-            <div className="bg-white rounded-xl shadow-md p-6 flex flex-col justify-center md:w-96 w-full min-w-[220px] border border-emerald-100">
+            <div className="bg-white rounded-xl shadow-md p-6 flex flex-col justify-end md:w-96 w-full min-w-[220px] border border-emerald-100">
               <div className="mb-4">
                 <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
                   <span>📅</span>
@@ -308,7 +308,7 @@ export default function PayrollPage() {
                   type="month"
                   value={selectedMonth}
                   onChange={(e) => setSelectedMonth(e.target.value)}
-                  className="px-4 py-3 border border-emerald-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white w-full"
+                  className="px-4 py-3 border border-emerald-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white w-full text-slate-900"
                 />
               </div>
               <button
