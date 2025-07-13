@@ -66,10 +66,10 @@ service cloud.firestore {
 
     // Transaction reports
     match /transactionReports/{reportId} {
-      // ONLY 'umkm-amil' can create transactions.
+      // 'umkm-amil' and 'hr-keuangan' can create transactions.
       allow create: if request.auth != null 
                     && exists(/databases/$(database)/documents/users/$(request.auth.uid))
-                    && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'umkm-amil';
+                    && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['umkm-amil', 'hr-keuangan'];
       // Any authenticated user can read reports.
       allow read: if request.auth != null;
       // HR-Keuangan can delete reports.

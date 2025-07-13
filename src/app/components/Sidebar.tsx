@@ -95,6 +95,19 @@ const Sidebar: React.FC<SidebarProps> = ({ active = "Dashboard" }) => {
     filteredMenu = [];
   }
 
+  const getDashboardPath = () => {
+    switch (userRole) {
+      case "hr-keuangan":
+        return "/dashboard/hr-keuangan";
+      case "karyawan":
+        return "/dashboard/karyawan";
+      case "umkm-amil":
+        return "/dashboard/mitra";
+      default:
+        return "/dashboard/hr-keuangan"; // fallback
+    }
+  };
+
   if (loadingUser) {
     return <div className="flex items-center justify-center h-full p-8 text-[#00C570]">Loading menu...</div>;
   }
@@ -103,7 +116,7 @@ const Sidebar: React.FC<SidebarProps> = ({ active = "Dashboard" }) => {
     <>
       {/* Desktop Sidebar */}
       <aside className="hidden md:flex flex-col w-56 bg-white border-r border-gray-100 py-6 px-4 gap-6 min-h-screen">
-        <Link href="/dashboard/hr-keuangan" className="flex items-center justify-center mb-8 px-2">
+        <Link href={getDashboardPath()} className="flex items-center justify-center mb-8 px-2">
           <Image src="/zafra.svg" alt="ZAFRA Logo" width={150} height={150} />
         </Link>
         <nav className="flex-1 flex flex-col gap-1">

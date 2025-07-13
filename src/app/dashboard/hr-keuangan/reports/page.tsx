@@ -1,10 +1,11 @@
 "use client";
 import { useState, useEffect, useMemo, Fragment } from "react";
 import { db } from "@/lib/firebaseApi";
-import { collection, query, onSnapshot, orderBy, Timestamp, addDoc, doc, deleteDoc } from "firebase/firestore";
-import { FiDownload, FiSearch, FiFilter, FiCheckCircle, FiAlertCircle, FiX, FiFileText, FiEdit2, FiPlus, FiTrendingUp, FiTrendingDown, FiCreditCard, FiBarChart2, FiZap, FiHelpCircle, FiClock, FiChevronDown, FiTrash2 } from "react-icons/fi";
+import { collection, query, onSnapshot, orderBy, Timestamp, addDoc, doc, deleteDoc, updateDoc } from "firebase/firestore";
+import { FiDownload, FiSearch, FiFilter, FiCheckCircle, FiAlertCircle, FiX, FiFileText, FiEdit2, FiPlus, FiTrendingUp, FiTrendingDown, FiCreditCard, FiBarChart2, FiZap, FiHelpCircle, FiClock, FiChevronDown, FiTrash2, FiShield } from "react-icons/fi";
 import Sidebar from "@/app/components/Sidebar";
 import Topbar from "@/app/components/Topbar";
+import VerificationModal from "@/app/components/VerificationModal";
 import { Bar } from "react-chartjs-2";
 import {
   Chart as ChartJS,
@@ -102,6 +103,9 @@ export default function ReportPage() {
   // Delete Modal State
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+
+  // Verification Modal State
+  const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
 
   // Toast Notification State
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
@@ -261,6 +265,28 @@ export default function ReportPage() {
     }
   };
 
+  // Verification handlers
+  const handleSaveVerification = async (status: string, explanation: string) => {
+    if (!selectedTransaction) return;
+    const transactionRef = doc(db, 'transactionReports', selectedTransaction.id);
+    try {
+      await updateDoc(transactionRef, {
+        aiStatus: status,
+        aiExplanation: explanation,
+      });
+      setToast({ message: "Verifikasi berhasil disimpan!", type: 'success' });
+      setTimeout(() => setToast(null), 2505);
+    } catch (error) {
+      console.error('Error saving verification:', error);
+      setToast({ message: "Gagal menyimpan verifikasi.", type: 'error' });
+      setTimeout(() => setToast(null), 2505);
+    }
+  };
+
+  const handleMulaiVerifikasi = (transaction: Transaction) => {
+    setSelectedTransaction(transaction);
+  };
+
   // Export functions
   const handleExportPDF = async () => {
     setExportingPDF(true);
@@ -371,6 +397,28 @@ export default function ReportPage() {
     <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-green-50 to-teal-50 flex">
       <Sidebar active="Report" />
       <main className="flex-1 flex flex-col min-h-screen overflow-x-auto">
+        {selectedTransaction && (
+          <VerificationModal
+            isOpen={!!selectedTransaction}
+            onClose={() => setSelectedTransaction(null)}
+            onSave={handleSaveVerification}
+            transaction={
+              selectedTransaction
+                ? {
+                    id: selectedTransaction.id,
+                    description: selectedTransaction.desc,
+                    category: selectedTransaction.category,
+                    nominal: selectedTransaction.amount,
+                    type: selectedTransaction.amount > 0 ? "income" : "expense",
+                    date: selectedTransaction.date,
+                    shariaStatus: selectedTransaction.aiStatus as "Halal" | "Haram" | "Syubhat" | undefined,
+                    aiStatus: selectedTransaction.aiStatus,
+                    aiExplanation: selectedTransaction.aiExplanation,
+                  }
+                : null
+            }
+          />
+        )}
         <Topbar
           userName={userProfile?.name || 'User'}
           userRole={userProfile?.role || 'Role'}
@@ -647,6 +695,16 @@ export default function ReportPage() {
                           <button onClick={() => setExpandedId(expandedId === tx.id ? null : tx.id)} className="text-emerald-600 hover:text-emerald-800 transition">
                             <FiChevronDown className={`transition-transform ${expandedId === tx.id ? 'rotate-180' : ''}`} />
                           </button>
+                          {tx.aiStatus === 'pending' && (
+                            <button 
+                              onClick={() => handleMulaiVerifikasi(tx)} 
+                              className="text-blue-600 hover:text-blue-800 transition flex items-center gap-1 px-2 py-1 rounded-md bg-blue-50 hover:bg-blue-100"
+                              title="Verifikasi AI Syariah"
+                            >
+                              <FiShield size={14} />
+                              <span className="text-xs">Verifikasi</span>
+                            </button>
+                          )}
                           <button onClick={() => { setDeleteConfirm(tx.id); setShowDeleteModal(true); }} className="text-red-600 hover:text-red-800 transition">
                             <FiTrash2 />
                           </button>
@@ -743,7 +801,19 @@ export default function ReportPage() {
                       </td>
                       <td className="px-4 py-3 text-right font-semibold text-emerald-700">{formatCurrency(tx.amount)}</td>
                             <td className="px-4 py-3 text-center"><StatusBadge status={tx.aiStatus} /></td>
-                            <td className="px-4 py-3 text-center text-emerald-400"><FiChevronDown className={`transform transition-transform ${expandedId === tx.id ? 'rotate-180' : ''}`} /></td>
+                            <td className="px-4 py-3 text-center flex items-center justify-center gap-2">
+                              <FiChevronDown className={`transform transition-transform ${expandedId === tx.id ? 'rotate-180' : ''}`} />
+                              {tx.aiStatus === 'pending' && (
+                                <button 
+                                  onClick={() => handleMulaiVerifikasi(tx)} 
+                                  className="text-blue-600 hover:text-blue-800 transition flex items-center gap-1 px-2 py-1 rounded-md bg-blue-50 hover:bg-blue-100"
+                                  title="Verifikasi AI Syariah"
+                                >
+                                  <FiShield size={14} />
+                                  <span className="text-xs">Verifikasi</span>
+                                </button>
+                              )}
+                            </td>
                     </tr>
                           {expandedId === tx.id && (
                             <tr className="bg-emerald-50/30"><td colSpan={6} className="p-4 text-sm text-gray-600">
