@@ -20,6 +20,7 @@ export function usePayrollPageLogic() {
   const [toast, setToast] = useState<{ type: 'success' | 'error', message: string } | null>(null);
   const [user, setUser] = useState<FirebaseUser | null>(null);
   const [userProfile, setUserProfile] = useState<any>(null);
+  const [prefillPayrollData, setPrefillPayrollData] = useState<any | null>(null);
 
   useEffect(() => {
     fetchPayrollUsers();
@@ -67,9 +68,33 @@ export function usePayrollPageLogic() {
     }
   };
 
-  const handleCreatePayroll = (employee: any) => {
+  const handleCreatePayroll = async (employee: any) => {
     setSelectedEmployee(employee);
     setSelectedPayroll(null);
+    // Fetch default gaji for this employee
+    const currentUser = auth.currentUser;
+    if (currentUser) {
+      const token = await currentUser.getIdToken();
+      const res = await fetch(`/api/profile?uid=${employee.user.id}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const profile = await res.json();
+        if (profile && (profile.defaultBasicSalary || profile.defaultAllowances || profile.defaultDeductions)) {
+          setPrefillPayrollData({
+            basicSalary: profile.defaultBasicSalary || 0,
+            allowances: profile.defaultAllowances || { transport: 0, meals: 0, housing: 0, other: 0 },
+            deductions: profile.defaultDeductions || { bpjs: 0, tax: 0, loans: 0, other: 0 },
+          });
+        } else {
+          setPrefillPayrollData(null);
+        }
+      } else {
+        setPrefillPayrollData(null);
+      }
+    } else {
+      setPrefillPayrollData(null);
+    }
     setIsModalOpen(true);
   };
 
@@ -252,5 +277,6 @@ export function usePayrollPageLogic() {
     formatCurrency,
     user,
     userProfile,
+    prefillPayrollData, setPrefillPayrollData,
   };
 } 

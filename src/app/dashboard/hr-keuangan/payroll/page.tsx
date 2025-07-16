@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { FiPlus, FiDownload, FiCheckCircle, FiClock, FiEdit2, FiSend, FiAlertCircle, FiX, FiFileText, FiStar, FiHeart, FiTrendingUp } from 'react-icons/fi';
+import { FiPlus, FiDownload, FiCheckCircle, FiClock, FiEdit2, FiSend, FiAlertCircle, FiX, FiFileText, FiStar, FiTrendingUp } from 'react-icons/fi';
 import { MdOutlineAttachMoney, MdOutlineCardGiftcard, MdOutlineRemoveCircleOutline, MdOutlineMosque, MdOutlineSavings } from 'react-icons/md';
 import Sidebar from '@/app/components/Sidebar';
 import Topbar from '@/app/components/Topbar';
@@ -17,10 +17,9 @@ import {
   Legend,
 } from 'chart.js';
 import { usePayrollPageLogic } from './payrollLogic';
-import { getAuth, onAuthStateChanged, signOut } from "firebase/auth";
+import { getAuth, onAuthStateChanged } from "firebase/auth";
 import { useRouter } from "next/navigation";
 
-// Islamic quotes and Quranic verses for payroll
 const ISLAMIC_QUOTES = [
   {
     quote: "وَآتُوا الْحَقَّ مِنْ أَمْوَالِكُمْ",
@@ -41,112 +40,27 @@ const ISLAMIC_QUOTES = [
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
-type DefaultPayroll = {
-  defaultBasicSalary: number;
-  defaultAllowances: { transport: number; meals: number; housing: number; other: number };
-  defaultDeductions: { bpjs: number; tax: number; loans: number; other: number };
-};
-
-interface DefaultPayrollModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onSave: (form: DefaultPayroll) => Promise<void>;
-  defaultPayroll: DefaultPayroll | null;
-  employee: any;
-}
-
-function DefaultPayrollModal({ isOpen, onClose, onSave, defaultPayroll, employee }: DefaultPayrollModalProps) {
-  const [form, setForm] = useState<DefaultPayroll>(defaultPayroll || {
-    defaultBasicSalary: 0,
-    defaultAllowances: { transport: 0, meals: 0, housing: 0, other: 0 },
-    defaultDeductions: { bpjs: 0, tax: 0, loans: 0, other: 0 },
-  });
-  const [loading, setLoading] = useState(false);
-  useEffect(() => {
-    setForm(defaultPayroll || {
-      defaultBasicSalary: 0,
-      defaultAllowances: { transport: 0, meals: 0, housing: 0, other: 0 },
-      defaultDeductions: { bpjs: 0, tax: 0, loans: 0, other: 0 },
-    });
-  }, [defaultPayroll, employee]);
-  if (!isOpen) return null;
-  return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-2xl p-6 w-full max-w-lg mx-4 relative animate-fadeIn max-h-[90vh] overflow-y-auto border border-emerald-100">
-        <div className="mb-4">
-          <h2 className="text-xl font-bold mb-2 flex items-center gap-2">
-            <span className="text-emerald-600">⚙️</span>
-            Kelola Default Gaji
-          </h2>
-          <div className="text-sm text-gray-600 font-semibold">{employee?.profile?.name || employee?.user?.name}</div>
-          <p className="text-xs text-gray-500 mt-1">"Dan berikanlah hak-hak yang telah ditentukan kepada yang berhak" - QS. Al-Baqarah: 267</p>
-        </div>
-        <form onSubmit={async (e) => {
-          e.preventDefault();
-          setLoading(true);
-          await onSave(form);
-          setLoading(false);
-        }} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
-              <span>💰</span>
-              Gaji Pokok
-            </label>
-            <input type="number" min={0} className="w-full px-4 py-3 border border-emerald-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-transparent" value={form.defaultBasicSalary} onChange={e => setForm((f) => ({ ...f, defaultBasicSalary: Number(e.target.value) }))} />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
-              <span>🎁</span>
-              Tunjangan
-            </label>
-            <div className="grid grid-cols-2 gap-3">
-              <input type="number" min={0} placeholder="Transport" className="px-3 py-2 border border-emerald-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent" value={form.defaultAllowances.transport} onChange={e => setForm((f) => ({ ...f, defaultAllowances: { ...f.defaultAllowances, transport: Number(e.target.value) } }))} />
-              <input type="number" min={0} placeholder="Makan" className="px-3 py-2 border border-emerald-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent" value={form.defaultAllowances.meals} onChange={e => setForm((f) => ({ ...f, defaultAllowances: { ...f.defaultAllowances, meals: Number(e.target.value) } }))} />
-              <input type="number" min={0} placeholder="Tempat Tinggal" className="px-3 py-2 border border-emerald-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent" value={form.defaultAllowances.housing} onChange={e => setForm((f) => ({ ...f, defaultAllowances: { ...f.defaultAllowances, housing: Number(e.target.value) } }))} />
-              <input type="number" min={0} placeholder="Lainnya" className="px-3 py-2 border border-emerald-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent" value={form.defaultAllowances.other} onChange={e => setForm((f) => ({ ...f, defaultAllowances: { ...f.defaultAllowances, other: Number(e.target.value) } }))} />
-            </div>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
-              <span>📉</span>
-              Potongan
-            </label>
-            <div className="grid grid-cols-2 gap-3">
-              <input type="number" min={0} placeholder="BPJS" className="px-3 py-2 border border-emerald-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent" value={form.defaultDeductions.bpjs} onChange={e => setForm((f) => ({ ...f, defaultDeductions: { ...f.defaultDeductions, bpjs: Number(e.target.value) } }))} />
-              <input type="number" min={0} placeholder="Pajak" className="px-3 py-2 border border-emerald-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent" value={form.defaultDeductions.tax} onChange={e => setForm((f) => ({ ...f, defaultDeductions: { ...f.defaultDeductions, tax: Number(e.target.value) } }))} />
-              <input type="number" min={0} placeholder="Pinjaman" className="px-3 py-2 border border-emerald-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent" value={form.defaultDeductions.loans} onChange={e => setForm((f) => ({ ...f, defaultDeductions: { ...f.defaultDeductions, loans: Number(e.target.value) } }))} />
-              <input type="number" min={0} placeholder="Lainnya" className="px-3 py-2 border border-emerald-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent" value={form.defaultDeductions.other} onChange={e => setForm((f) => ({ ...f, defaultDeductions: { ...f.defaultDeductions, other: Number(e.target.value) } }))} />
-            </div>
-          </div>
-          <div className="flex justify-end gap-3 mt-6">
-            <button type="button" className="px-4 py-2 border border-gray-300 rounded-xl hover:bg-gray-50 transition" onClick={onClose} disabled={loading}>Batal</button>
-            <button type="submit" className="px-4 py-2 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition font-semibold" disabled={loading}>{loading ? 'Menyimpan...' : 'Simpan'}</button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
-}
-
 export default function PayrollPage() {
   const [loadingUser, setLoadingUser] = useState(true);
   const router = useRouter();
-  // Always call usePayrollPageLogic at the top, before any return
   const logic = usePayrollPageLogic();
+
   useEffect(() => {
     const auth = getAuth();
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      if (user && user.uid) {
-        // No need to fetch profile here, handled in usePayrollPageLogic
-        // Just check if user is authenticated
-      }
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
       setLoadingUser(false);
     });
     return () => unsubscribe();
   }, []);
+
   if (loadingUser) {
-    return <div className="flex items-center justify-center min-h-screen bg-[#F6F8FA]"><div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#00C570]"></div></div>;
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-[#F6F8FA]">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#00C570]"></div>
+      </div>
+    );
   }
+
   const {
     selectedMonth, setSelectedMonth,
     payrollUsers, loading, error,
@@ -172,7 +86,6 @@ export default function PayrollPage() {
     userProfile,
   } = logic;
 
-  // Use real user data for Topbar
   const userData = userProfile
     ? {
         name: userProfile.name || 'User',
@@ -181,7 +94,6 @@ export default function PayrollPage() {
       }
     : { name: '', role: '', photo: undefined };
 
-  // Chart Data and Options
   const chartData = {
     labels: [
       "Gaji Pokok",
@@ -461,11 +373,12 @@ export default function PayrollPage() {
             </table>
           </div>
 
+          {/* Payroll Modal for Edit/Create */}
           <PayrollModal
             isOpen={isModalOpen}
             onClose={() => setIsModalOpen(false)}
             onSave={handleSavePayroll}
-            payrollData={selectedPayroll?.payroll || undefined}
+            payrollData={logic.prefillPayrollData || selectedPayroll?.payroll || undefined}
             employeeData={selectedEmployee?.profile ? {
               id: selectedEmployee.user.id,
               name: selectedEmployee.profile.name,
@@ -477,6 +390,7 @@ export default function PayrollPage() {
             }}
           />
 
+          {/* Payroll Modal for Default Payroll */}
           <PayrollModal
             isOpen={isDefaultModalOpen}
             onClose={() => setIsDefaultModalOpen(false)}
@@ -491,6 +405,7 @@ export default function PayrollPage() {
               name: defaultPayrollEmployee?.user?.name,
               position: defaultPayrollEmployee?.user?.role
             }}
+            onSave={logic.handleSaveDefaultPayroll}
           />
 
           {/* Compliance Modal */}
